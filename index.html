@@ -93,12 +93,20 @@
     pointer-events: auto;
   }
   #inlineEditorText {
-    caret-color: #4fffb0;
-    border-radius: 3px;
-    box-shadow: 0 0 0 2px #4fffb0, 0 2px 16px rgba(79,255,176,0.18);
+    caret-color: #000;
+    border: none;
+    outline: none;
+    background: transparent;
+    padding: 0;
   }
   #inlineEditorText:focus {
     outline: none;
+  }
+  /* Shape node editing: subtle underline cursor only, no box */
+  #inlineEditorText.shape-edit {
+    caret-color: #4fffb0;
+    border-bottom: 1.5px solid rgba(79,255,176,0.6);
+    padding-bottom: 1px;
   }
 </style>
 </head>
@@ -222,6 +230,13 @@
           Ввод вручную
         </div>
 
+        <div class="palette-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg dark:border-dark-border border-light-border border cursor-grab transition-all text-xs font-semibold dark:hover:border-accent hover:border-accent dark:text-gray-200 text-gray-700 hover:translate-x-0.5 select-none" draggable="true" data-type="text">
+          <div class="w-7 h-5 flex items-center justify-center flex-shrink-0">
+            <span style="font-size:13px;font-weight:700;color:#374151;font-family:serif;line-height:1">T</span>
+          </div>
+          Текст
+        </div>
+
         <div class="palette-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg dark:border-dark-border border-light-border border cursor-grab transition-all text-xs font-semibold dark:hover:border-accent hover:border-accent dark:text-gray-200 text-gray-700 hover:translate-x-0.5 select-none" draggable="true" data-type="comment">
           <div class="w-7 h-5 flex items-center justify-center flex-shrink-0">
             <svg width="28" height="20" viewBox="0 0 28 20" class="dark:hidden"><rect x="1" y="1" width="20" height="18" rx="2" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/><line x1="21" y1="6" x2="27" y2="6" stroke="#86efac" stroke-width="1.5"/><line x1="21" y1="14" x2="27" y2="14" stroke="#86efac" stroke-width="1.5"/><line x1="27" y1="6" x2="27" y2="14" stroke="#86efac" stroke-width="1.5"/></svg>
@@ -238,6 +253,7 @@
       <div class="text-[9px] font-semibold tracking-widest uppercase dark:text-gray-500 text-gray-400 mb-2">Подсказки</div>
       <div class="font-mono text-[10px] dark:text-gray-500 text-gray-400 leading-[1.8]">
         • Перетащи фигуру<br>
+        • Двойной клик — текст<br>
         • Клик — выбор<br>
         • Hover → порт → стрелка<br>
         • 🟡 порт — перенаправить<br>
@@ -317,6 +333,7 @@
           <label class="block text-[10px] font-semibold tracking-wide uppercase dark:text-gray-500 text-gray-400 mb-1">Тип формы</label>
           <select id="propType"
             class="w-full dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-800 px-2.5 py-1.5 rounded-md font-mono text-[11px] outline-none transition-colors focus:border-accent">
+            <option value="text">Текст</option>
             <option value="start">Начало/Конец</option>
             <option value="process">Процесс</option>
             <option value="decision">Условие</option>
@@ -331,18 +348,7 @@
           </select>
         </div>
 
-        <!-- Color swatches -->
-        <div>
-          <label class="block text-[10px] font-semibold tracking-wide uppercase dark:text-gray-500 text-gray-400 mb-1">Цвет акцента</label>
-          <div class="flex gap-1.5" id="colorSwatches">
-            <div class="color-swatch w-6 h-6 rounded-[5px] border-2 border-transparent cursor-pointer transition-transform hover:scale-110" style="background:#4fffb0" data-color="#4fffb0"></div>
-            <div class="color-swatch w-6 h-6 rounded-[5px] border-2 border-transparent cursor-pointer transition-transform hover:scale-110" style="background:#6b8aff" data-color="#6b8aff"></div>
-            <div class="color-swatch w-6 h-6 rounded-[5px] border-2 border-transparent cursor-pointer transition-transform hover:scale-110" style="background:#c084fc" data-color="#c084fc"></div>
-            <div class="color-swatch w-6 h-6 rounded-[5px] border-2 border-transparent cursor-pointer transition-transform hover:scale-110" style="background:#fbbf24" data-color="#fbbf24"></div>
-            <div class="color-swatch w-6 h-6 rounded-[5px] border-2 border-transparent cursor-pointer transition-transform hover:scale-110" style="background:#ff6b6b" data-color="#ff6b6b"></div>
-            <div class="color-swatch w-6 h-6 rounded-[5px] border-2 border-transparent cursor-pointer transition-transform hover:scale-110" style="background:#67e8f9" data-color="#67e8f9"></div>
-          </div>
-        </div>
+
 
         <!-- Font Family -->
         <div id="propFontGroup">
@@ -401,16 +407,7 @@
             onclick="setDiagramStyle('gost')">
             📐 ГОСТ
           </button>
-          <button id="btnStyleStrict"
-            class="style-btn w-full py-1.5 px-2.5 rounded-md font-mono text-[11px] font-semibold cursor-pointer transition-all text-left border-2 border-transparent dark:bg-dark-panel bg-light-panel dark:text-gray-400 text-gray-500 dark:hover:border-dark-border hover:border-light-border"
-            onclick="setDiagramStyle('strict')">
-            ⌐ Строгий
-          </button>
-          <button id="btnStyleSmooth"
-            class="style-btn w-full py-1.5 px-2.5 rounded-md font-mono text-[11px] font-semibold cursor-pointer transition-all text-left border-2 border-transparent dark:bg-dark-panel bg-light-panel dark:text-gray-400 text-gray-500 dark:hover:border-dark-border hover:border-light-border"
-            onclick="setDiagramStyle('smooth')">
-            ∿ Плавный
-          </button>
+
         </div>
       </div>
 
@@ -532,38 +529,31 @@ function switchTab(tab) {
 // DIAGRAM STYLE
 // ============================================================
 function setDiagramStyle(style) {
-  diagramStyle = style;
-  // Update edge style
-  if (style === 'smooth') { edgeStyle = 'curved'; }
-  else                    { edgeStyle = 'orthogonal'; }
+  diagramStyle = 'gost';
+  edgeStyle = 'orthogonal';
 
-  // Update button states
-  ['gost','strict','smooth'].forEach(s => {
-    const btn = document.getElementById('btnStyle' + s.charAt(0).toUpperCase() + s.slice(1));
-    if (!btn) return;
-    if (s === style) {
-      btn.className = 'style-btn w-full py-1.5 px-2.5 rounded-md font-mono text-[11px] font-semibold cursor-pointer transition-all text-left border-2 border-accent bg-transparent text-accent';
-    } else {
-      btn.className = 'style-btn w-full py-1.5 px-2.5 rounded-md font-mono text-[11px] font-semibold cursor-pointer transition-all text-left border-2 border-transparent dark:bg-dark-panel bg-light-panel dark:text-gray-400 text-gray-500 dark:hover:border-dark-border hover:border-light-border';
-    }
-  });
+  const btn = document.getElementById('btnStyleGost');
+  if (btn) {
+    btn.className = 'style-btn w-full py-1.5 px-2.5 rounded-md font-mono text-[11px] font-semibold cursor-pointer transition-all text-left border-2 border-accent bg-transparent text-accent';
+  }
   applyCanvasTheme();
   render();
   updateProps();
 }
 
 const NODE_DEFAULTS = {
-  start:      { w: 120, h: 44,  color: '#4fffb0',  label: 'Начало' },
-  process:    { w: 140, h: 54,  color: '#6b8aff',  label: 'Процесс' },
-  decision:   { w: 120, h: 70,  color: '#c084fc',  label: 'Условие?' },
-  io:         { w: 140, h: 50,  color: '#fbbf24',  label: 'Ввод/Вывод' },
-  connector:  { w: 44,  h: 44,  color: '#ff6b6b',  label: '' },
-  for:        { w: 140, h: 60,  color: '#34d399',  label: 'Цикл for' },
-  subprogram: { w: 150, h: 54,  color: '#67e8f9',  label: 'Подпрограмма' },
-  database:   { w: 100, h: 64,  color: '#f472b6',  label: 'База данных' },
-  document:   { w: 140, h: 54,  color: '#fb923c',  label: 'Документ' },
-  manual:     { w: 140, h: 54,  color: '#e879f9',  label: 'Ввод вручную' },
-  comment:    { w: 150, h: 60,  color: '#86efac',  label: 'Комментарий' },
+  text:       { w: 120, h: 30,  color: '#000000',  label: 'Текст' },
+  start:      { w: 120, h: 44,  color: '#000000',  label: 'Начало' },
+  process:    { w: 140, h: 54,  color: '#000000',  label: 'Процесс' },
+  decision:   { w: 120, h: 70,  color: '#000000',  label: 'Условие?' },
+  io:         { w: 140, h: 50,  color: '#000000',  label: 'Ввод/Вывод' },
+  connector:  { w: 44,  h: 44,  color: '#000000',  label: '' },
+  for:        { w: 140, h: 60,  color: '#000000',  label: 'Цикл for' },
+  subprogram: { w: 150, h: 54,  color: '#000000',  label: 'Подпрограмма' },
+  database:   { w: 100, h: 64,  color: '#000000',  label: 'База данных' },
+  document:   { w: 140, h: 54,  color: '#000000',  label: 'Документ' },
+  manual:     { w: 140, h: 54,  color: '#000000',  label: 'Ввод вручную' },
+  comment:    { w: 150, h: 60,  color: '#000000',  label: 'Комментарий' },
 };
 
 // ============================================================
@@ -623,6 +613,8 @@ function redo() {
 function getNodeShape(node) {
   const { x, y, w, h, type } = node;
   switch (type) {
+    // Text: invisible bounding rect (no stroke/fill rendered)
+    case 'text':      return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="transparent" stroke="none"/>`;
     case 'start':     return `<rect rx="${h/2}" ry="${h/2}" x="${x}" y="${y}" width="${w}" height="${h}"/>`;
     case 'process':   return `<rect rx="${edgeStyle==='orthogonal'?0:4}" x="${x}" y="${y}" width="${w}" height="${h}"/>`;
     case 'decision':  return `<polygon points="${x+w/2},${y} ${x+w},${y+h/2} ${x+w/2},${y+h} ${x},${y+h/2}"/>`;
@@ -643,6 +635,8 @@ function getNodeShape(node) {
   }
 }
 function getPorts(node) {
+  // Text nodes have no connection ports
+  if (node.type === 'text') return [];
   const { x, y, w, h, type } = node;
   // For most shapes, ports are at bounding box edges (center of each side)
   // For document: wavy bottom, port should be at visual top of wave (not bottom of bbox)
@@ -1014,10 +1008,10 @@ function render() {
   const labelBg   = isGost ? '#ffffff'  : (isDark() ? '#1a1e28' : '#ffffff');
   const labelFg   = isGost ? '#000000'  : (isDark() ? '#9ca3af' : '#6b7280');
   const nodeFills = isGost
-    ? { start:'#ffffff', process:'#ffffff', decision:'#ffffff', io:'#ffffff', connector:'#ffffff', for:'#ffffff', subprogram:'#ffffff', database:'#ffffff', document:'#ffffff', manual:'#ffffff', comment:'#ffffff' }
+    ? { text:'transparent', start:'#ffffff', process:'#ffffff', decision:'#ffffff', io:'#ffffff', connector:'#ffffff', for:'#ffffff', subprogram:'#ffffff', database:'#ffffff', document:'#ffffff', manual:'#ffffff', comment:'#ffffff' }
     : (isDark()
-      ? { start:'#0f2b1a', process:'#0d1a35', decision:'#1a0d2b', io:'#2b1f0a', connector:'#2b0d0d', for:'#0d2b20', subprogram:'#0d2b2b', database:'#2b0d20', document:'#2b1a0d', manual:'#250d2b', comment:'#0d2b14' }
-      : { start:'#d1fae5', process:'#dbeafe', decision:'#ede9fe', io:'#fef3c7', connector:'#fee2e2', for:'#d1fae5', subprogram:'#cffafe', database:'#fce7f3', document:'#ffedd5', manual:'#fae8ff', comment:'#f0fdf4' });
+      ? { text:'transparent', start:'#0f2b1a', process:'#0d1a35', decision:'#1a0d2b', io:'#2b1f0a', connector:'#2b0d0d', for:'#0d2b20', subprogram:'#0d2b2b', database:'#2b0d20', document:'#2b1a0d', manual:'#250d2b', comment:'#0d2b14' }
+      : { text:'transparent', start:'#d1fae5', process:'#dbeafe', decision:'#ede9fe', io:'#fef3c7', connector:'#fee2e2', for:'#d1fae5', subprogram:'#cffafe', database:'#fce7f3', document:'#ffedd5', manual:'#fae8ff', comment:'#f0fdf4' });
 
   // Update arrowhead colour for GOST
   const arrowEl = document.getElementById('arrowhead');
@@ -1143,8 +1137,8 @@ function render() {
     grp.dataset.kind = 'node';
     grp.style.cursor = 'pointer';
 
-    // Shadow (not in GOST mode)
-    if (!isGost) {
+    // Shadow (not in GOST mode, not for text nodes)
+    if (!isGost && node.type !== 'text') {
       const shadow = document.createElementNS('http://www.w3.org/2000/svg','g');
       shadow.innerHTML = getNodeShape(node);
       const shadowShape = shadow.firstChild;
@@ -1165,10 +1159,31 @@ function render() {
     const body = document.createElementNS('http://www.w3.org/2000/svg','g');
     body.innerHTML = getNodeShape(node);
     const bodyShape = body.firstChild;
+    const isTextNode = node.type === 'text';
     const strokeColor = isGost ? '#000000' : (isSelected ? (isDark() ? '#ffffff' : '#1e293b') : (isConnectSrc ? '#4fffb0' : node.color));
     const strokeWidth = isSelected ? '2.5' : (isGost ? '2' : '1.5');
     const fillColor = nodeFills[node.type] || '#fff';
-    if (bodyShape.tagName === 'g') {
+    if (isTextNode) {
+      // Text node: transparent hit area only; selection shown via SVG cursor rect
+      bodyShape.setAttribute('fill', 'transparent');
+      bodyShape.setAttribute('stroke', 'none');
+      bodyShape.setAttribute('pointer-events', 'fill');
+      if (isSelected) {
+        const selRect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+        selRect.setAttribute('x', node.x - 2);
+        selRect.setAttribute('y', node.y - 2);
+        selRect.setAttribute('width', node.w + 4);
+        selRect.setAttribute('height', node.h + 4);
+        selRect.setAttribute('rx', '2');
+        selRect.setAttribute('fill', 'none');
+        selRect.setAttribute('stroke', isGost ? '#555' : '#4fffb0');
+        selRect.setAttribute('stroke-width', '1');
+        selRect.setAttribute('stroke-dasharray', '5,3');
+        selRect.setAttribute('opacity', '0.5');
+        selRect.setAttribute('pointer-events', 'none');
+        grp.insertBefore(selRect, grp.firstChild);
+      }
+    } else if (bodyShape.tagName === 'g') {
       // Group shape (subprogram, database): apply to all children
       Array.from(bodyShape.children).forEach((child, idx) => {
         if (child.tagName === 'line') {
@@ -1189,7 +1204,7 @@ function render() {
       bodyShape.setAttribute('stroke', strokeColor);
       bodyShape.setAttribute('stroke-width', strokeWidth);
     }
-    if (isSelected) bodyShape.setAttribute('filter', 'url(#glow)');
+    if (isSelected && !isTextNode) bodyShape.setAttribute('filter', 'url(#glow)');
     grp.appendChild(bodyShape);
 
     // Text — font properties (GOST overrides to Times New Roman at standard sizes)
@@ -1198,11 +1213,12 @@ function render() {
       // Still render ports etc, just skip the text
     } else {
     const textLines = (node.label || '').split('\n');
-    const textY = node.y + node.h/2;
-    const gostSizeDef = { start: 12, connector: 10, decision: 12, io: 12, for: 12, subprogram: 12, database: 12, document: 12, manual: 12, comment: 11, process: 12 };
+    const isTextNode = node.type === 'text';
+    const textY = isTextNode ? node.y + (node.fontSize || 14) : node.y + node.h/2;
+    const gostSizeDef = { text: 14, start: 12, connector: 10, decision: 12, io: 12, for: 12, subprogram: 12, database: 12, document: 12, manual: 12, comment: 11, process: 12 };
     const defaultFamily = isGost ? 'Times New Roman' : 'JetBrains Mono';
-    const defaultSize   = isGost ? (gostSizeDef[node.type] || 12) : (node.type === 'connector' ? 10 : 12);
-    const defaultWeight = isGost ? '400' : '600';
+    const defaultSize   = isGost ? (gostSizeDef[node.type] || 12) : (node.type === 'connector' ? 10 : node.type === 'text' ? 14 : 12);
+    const defaultWeight = isGost ? '400' : (node.type === 'text' ? '400' : '600');
     const rawFamily = node.fontFamily || defaultFamily;
     const familySuffix = (rawFamily === 'JetBrains Mono' || rawFamily === 'Courier New') ? ', monospace'
                         : (rawFamily === 'Times New Roman' || rawFamily === 'Georgia') ? ', serif'
@@ -1214,10 +1230,17 @@ function render() {
     const lineHeight = Math.max(nodeFontSize * 1.25, 14);
     textLines.forEach((line, i) => {
       const t = document.createElementNS('http://www.w3.org/2000/svg','text');
-      t.setAttribute('x', node.x + node.w/2);
-      t.setAttribute('y', textY - ((textLines.length-1)/2 - i) * lineHeight);
-      t.setAttribute('text-anchor','middle');
-      t.setAttribute('dominant-baseline','middle');
+      if (isTextNode) {
+        t.setAttribute('x', node.x);
+        t.setAttribute('y', node.y + nodeFontSize + i * lineHeight);
+        t.setAttribute('text-anchor', 'start');
+        t.setAttribute('dominant-baseline', 'auto');
+      } else {
+        t.setAttribute('x', node.x + node.w/2);
+        t.setAttribute('y', textY - ((textLines.length-1)/2 - i) * lineHeight);
+        t.setAttribute('text-anchor','middle');
+        t.setAttribute('dominant-baseline','middle');
+      }
       t.setAttribute('font-size', nodeFontSize);
       t.setAttribute('font-family', nodeFontFamily);
       t.setAttribute('font-weight', nodeFontWeight);
@@ -1229,8 +1252,8 @@ function render() {
     });
     } // end if not inline-editing text
 
-    // Ports
-    const showPorts = isSelected || isConnectSrc || hoveredPort?.nodeId === node.id;
+    // Ports — skip for text nodes
+    const showPorts = !isTextNode && (isSelected || isConnectSrc || hoveredPort?.nodeId === node.id);
     getPorts(node).forEach(port => {
       const isHovPort = hoveredPort && hoveredPort.nodeId === node.id && hoveredPort.portId === port.id;
       const pc = document.createElementNS('http://www.w3.org/2000/svg','circle');
@@ -1386,8 +1409,8 @@ function updateProps() {
 
     // Default font depends on mode: GOST → Times New Roman, otherwise JetBrains Mono
     const defaultFamily = isGost ? 'Times New Roman' : 'JetBrains Mono';
-    const gostSizes = { start: 12, connector: 10, decision: 12, io: 12, for: 12, subprogram: 12, database: 12, document: 12, manual: 12, comment: 11, process: 12 };
-    const defaultSize = isGost ? (gostSizes[el.type] || 12) : (el.type === 'connector' ? 10 : 12);
+    const gostSizes = { text: 14, start: 12, connector: 10, decision: 12, io: 12, for: 12, subprogram: 12, database: 12, document: 12, manual: 12, comment: 11, process: 12 };
+    const defaultSize = isGost ? (gostSizes[el.type] || 12) : (el.type === 'connector' ? 10 : el.type === 'text' ? 14 : 12);
 
     document.getElementById('propFontFamily').value = el.fontFamily || defaultFamily;
     document.getElementById('propFontSize').value = el.fontSize || defaultSize;
@@ -1415,7 +1438,11 @@ document.getElementById('propText').addEventListener('focus', () => {
 document.getElementById('propText').addEventListener('input', e => {
   const node = nodes.find(n=>n.id===selectedId);
   const edge = edges.find(ed=>ed.id===selectedId);
-  if (node) { node.label = e.target.value; render(); }
+  if (node) {
+    node.label = e.target.value;
+    if (node.type === 'text') recalcTextNodeSize(node);
+    render();
+  }
   if (edge) { edge.label = e.target.value; render(); }
 });
 document.getElementById('propType').addEventListener('change', e => {
@@ -1431,7 +1458,11 @@ document.getElementById('propType').addEventListener('change', e => {
 
 document.getElementById('propFontFamily').addEventListener('change', e => {
   const node = nodes.find(n=>n.id===selectedId);
-  if (node) { saveHistory(); node.fontFamily = e.target.value; render(); }
+  if (node) {
+    saveHistory(); node.fontFamily = e.target.value;
+    if (node.type === 'text') recalcTextNodeSize(node);
+    render();
+  }
 });
 document.getElementById('propFontStyle').addEventListener('change', e => {
   const node = nodes.find(n=>n.id===selectedId);
@@ -1440,6 +1471,7 @@ document.getElementById('propFontStyle').addEventListener('change', e => {
     const [style, weight] = e.target.value.split('|');
     node.fontStyle = style;
     node.fontWeight = weight;
+    if (node.type === 'text') recalcTextNodeSize(node);
     render();
   }
 });
@@ -1447,14 +1479,18 @@ document.getElementById('propFontSize').addEventListener('input', e => {
   const node = nodes.find(n=>n.id===selectedId);
   const val = parseInt(e.target.value);
   if (node && val >= 6 && val <= 72) {
-    node.fontSize = val; render();
+    node.fontSize = val;
+    if (node.type === 'text') recalcTextNodeSize(node);
+    render();
   }
 });
 document.getElementById('propFontSize').addEventListener('change', e => {
   const node = nodes.find(n=>n.id===selectedId);
   const val = parseInt(e.target.value);
   if (node && val >= 6 && val <= 72) {
-    saveHistory(); node.fontSize = val; render();
+    saveHistory(); node.fontSize = val;
+    if (node.type === 'text') recalcTextNodeSize(node);
+    render();
   }
 });
 document.querySelectorAll('.color-swatch').forEach(sw => {
@@ -1844,49 +1880,63 @@ svg.addEventListener('contextmenu', e => e.preventDefault());
 // INLINE TEXT EDITING ON DOUBLE-CLICK
 // ============================================================
 let inlineEditingNodeId = null;
+let inlineEditingIsNew = false; // true if node was just created (delete on empty commit/cancel)
 const inlineEditor = document.getElementById('inlineEditor');
 const inlineEditorText = document.getElementById('inlineEditorText');
 
 function getNodeFontProps(node) {
   const isGost = diagramStyle === 'gost';
-  const fam = node.fontFamily || (isGost ? 'Times New Roman' : 'JetBrains Mono');
+  const fam = node.fontFamily || (isGost ? 'Times New Roman' : (node.type === 'text' ? 'Times New Roman' : 'JetBrains Mono'));
   const famCss = fam + ((fam === 'JetBrains Mono' || fam === 'Courier New') ? ',monospace' : (fam === 'Times New Roman' || fam === 'Georgia') ? ',serif' : ',sans-serif');
-  const gostSizes = { start:12, connector:10, decision:12, io:12, for:12, subprogram:12, database:12, document:12, manual:12, comment:11, process:12 };
-  const defaultSize = isGost ? (gostSizes[node.type]||12) : (node.type === 'connector' ? 10 : 12);
+  const gostSizes = { text: 14, start:12, connector:10, decision:12, io:12, for:12, subprogram:12, database:12, document:12, manual:12, comment:11, process:12 };
+  const defaultSize = isGost ? (gostSizes[node.type]||12) : (node.type === 'connector' ? 10 : node.type === 'text' ? 14 : 12);
   return {
     family: famCss,
     size: node.fontSize || defaultSize,
     style: node.fontStyle || 'normal',
-    weight: node.fontWeight || (isGost ? '400' : '600'),
+    weight: node.fontWeight || (node.type === 'text' ? '400' : (isGost ? '400' : '600')),
   };
 }
 
-function openInlineEditor(node) {
+function openInlineEditor(node, isNew) {
   inlineEditingNodeId = node.id;
+  inlineEditingIsNew = !!isNew;
   selectedId = node.id;
 
   const fp = getNodeFontProps(node);
   const scaledFontSize = fp.size * zoom;
+  const isTextNode = node.type === 'text';
 
-  // canvasWrap is position:relative, inlineEditor is absolute inside it
-  // SVG fills canvasWrap entirely, so we just apply pan+zoom transform
-  const cx = node.x * zoom + pan.x + (node.w * zoom) / 2;
-  const cy = node.y * zoom + pan.y + (node.h * zoom) / 2;
+  let editorX, editorY, transformStyle;
+  if (isTextNode) {
+    editorX = node.x * zoom + pan.x;
+    editorY = node.y * zoom + pan.y;
+    transformStyle = 'none';
+  } else {
+    editorX = node.x * zoom + pan.x + (node.w * zoom) / 2;
+    editorY = node.y * zoom + pan.y + (node.h * zoom) / 2;
+    transformStyle = 'translate(-50%, -50%)';
+  }
+
+  // Style: plain transparent for text nodes, accent glow for shape nodes
+  inlineEditorText.className = isTextNode ? '' : 'shape-edit';
 
   inlineEditorText.style.fontFamily  = fp.family;
   inlineEditorText.style.fontSize    = scaledFontSize + 'px';
   inlineEditorText.style.fontStyle   = fp.style;
   inlineEditorText.style.fontWeight  = fp.weight;
-  inlineEditorText.style.color       = diagramStyle === 'gost' ? '#000' : node.color;
-  inlineEditorText.style.minWidth    = Math.max(node.w * zoom * 0.7, 40) + 'px';
-  inlineEditorText.style.maxWidth    = (node.w * zoom * 1.6) + 'px';
+  inlineEditorText.style.color       = '#000000';
+  inlineEditorText.style.textAlign   = isTextNode ? 'left' : 'center';
+  inlineEditorText.style.minWidth    = Math.max(node.w * zoom * (isTextNode ? 0.5 : 0.7), 20) + 'px';
+  inlineEditorText.style.maxWidth    = (isTextNode ? 600 : node.w * zoom * 1.6) + 'px';
   inlineEditorText.style.lineHeight  = Math.max(scaledFontSize * 1.35, 16) + 'px';
+  inlineEditorText.style.padding     = isTextNode ? '0' : '2px 4px';
 
   inlineEditorText.innerText = node.label || '';
 
-  inlineEditor.style.left      = cx + 'px';
-  inlineEditor.style.top       = cy + 'px';
-  inlineEditor.style.transform = 'translate(-50%, -50%)';
+  inlineEditor.style.left      = editorX + 'px';
+  inlineEditor.style.top       = editorY + 'px';
+  inlineEditor.style.transform = transformStyle;
   inlineEditor.style.display   = 'block';
 
   requestAnimationFrame(() => {
@@ -1899,31 +1949,98 @@ function openInlineEditor(node) {
     sel.addRange(range);
   });
 
-  // Re-render to show selection highlight but DON'T hide the editor
+  render();
   updateProps();
 }
 
 function commitInlineEditor() {
   if (!inlineEditingNodeId) return;
-  const node = nodes.find(n => n.id === inlineEditingNodeId);
+  const nodeId = inlineEditingNodeId;
+  const isNew = inlineEditingIsNew;
+  inlineEditingNodeId = null;
+  inlineEditingIsNew = false;
+  inlineEditor.style.display = 'none';
+
+  const node = nodes.find(n => n.id === nodeId);
   if (node) {
     const newLabel = inlineEditorText.innerText.replace(/\u00a0/g,' ').trimEnd();
+    inlineEditorText.innerText = '';
+
+    // Delete freshly-created text node if left empty
+    if (node.type === 'text' && isNew && !newLabel) {
+      nodes = nodes.filter(n => n.id !== nodeId);
+      // Pop the history snapshot saved on creation
+      if (history.length > 0 && historyIndex >= 0) {
+        history = history.slice(0, historyIndex);
+        historyIndex = history.length - 1;
+      }
+      selectedId = null;
+      render(); updateProps(); updateStatus();
+      return;
+    }
+
     if (newLabel !== node.label) {
-      saveHistory();
+      if (!isNew) saveHistory();
       node.label = newLabel;
     }
+
+    // Auto-resize text node bounding box based on actual rendered text
+    if (node.type === 'text') {
+      recalcTextNodeSize(node);
+    }
+  } else {
+    inlineEditorText.innerText = '';
   }
-  inlineEditingNodeId = null;
-  inlineEditor.style.display = 'none';
-  inlineEditorText.innerText = '';
+
   render(); updateProps();
 }
 
+// Recalculate text node bounding box to fit its content
+function recalcTextNodeSize(node) {
+  if (node.type !== 'text') return;
+  const lines = (node.label || ' ').split('\n');
+  const fs = node.fontSize || 14;
+  const lh = Math.max(fs * 1.3, 16);
+  const padX = 4, padY = 4;
+  node.h = Math.max(fs + (lines.length - 1) * lh + padY, fs + padY);
+  // Use a temporary SVG text element to measure actual pixel width
+  const tmpSvg = document.getElementById('canvas');
+  const tmpText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  tmpText.setAttribute('font-size', fs);
+  tmpText.setAttribute('font-family', node.fontFamily || 'JetBrains Mono, monospace');
+  tmpText.setAttribute('font-weight', node.fontWeight || '400');
+  tmpText.setAttribute('font-style', node.fontStyle || 'normal');
+  tmpText.setAttribute('visibility', 'hidden');
+  tmpSvg.appendChild(tmpText);
+  let maxW = 0;
+  lines.forEach(line => {
+    tmpText.textContent = line || ' ';
+    try { maxW = Math.max(maxW, tmpText.getComputedTextLength()); } catch(e) {}
+  });
+  tmpSvg.removeChild(tmpText);
+  node.w = Math.max(maxW + padX * 2, 20);
+}
+
 function cancelInlineEditor() {
+  const nodeId = inlineEditingNodeId;
+  const isNew = inlineEditingIsNew;
   inlineEditingNodeId = null;
+  inlineEditingIsNew = false;
   inlineEditor.style.display = 'none';
   inlineEditorText.innerText = '';
-  render();
+
+  // If cancelled a freshly-created text node — remove it directly (no undo touch)
+  if (isNew && nodeId) {
+    nodes = nodes.filter(n => n.id !== nodeId);
+    // Also pop the history snapshot that was saved on creation
+    if (history.length > 0 && historyIndex >= 0) {
+      history = history.slice(0, historyIndex);
+      historyIndex = history.length - 1;
+    }
+    selectedId = null;
+    updateStatus();
+  }
+  render(); updateProps();
 }
 
 // Commit on Enter (without Shift), cancel on Escape
@@ -1932,15 +2049,24 @@ inlineEditorText.addEventListener('keydown', e => {
   if (e.key === 'Escape') { cancelInlineEditor(); }
 });
 
-// Commit when focus leaves the editor
+// Commit when focus leaves the editor (blur)
 inlineEditorText.addEventListener('blur', e => {
-  // relatedTarget = element that received focus; if it's inside the panel it's fine to commit
   setTimeout(() => {
-    if (inlineEditingNodeId) commitInlineEditor();
-  }, 120);
+    if (!inlineEditingNodeId) return;
+    const node = nodes.find(n => n.id === inlineEditingNodeId);
+    const isEmpty = !inlineEditorText.innerText.replace(/\u00a0/g,' ').trim();
+    // New text node with no content → cancel (remove the node)
+    if (node && node.type === 'text' && inlineEditingIsNew && isEmpty) {
+      cancelInlineEditor();
+    } else {
+      commitInlineEditor();
+    }
+  }, 80);
 });
 
 svg.addEventListener('dblclick', e => {
+  // If already editing, let blur handle it — don't create a second node
+  if (inlineEditingNodeId) return;
   const nodeGrp = e.target.closest('[data-kind="node"]');
   if (nodeGrp) {
     const node = nodes.find(n => n.id === nodeGrp.dataset.id);
@@ -1948,6 +2074,25 @@ svg.addEventListener('dblclick', e => {
       e.stopPropagation();
       openInlineEditor(node);
     }
+  } else {
+    // Double-click on empty canvas → create a text node and immediately edit it
+    const pt = svgPoint(e);
+    const def = NODE_DEFAULTS['text'];
+    const node = {
+      id: `n${nodeIdCounter++}`,
+      type: 'text',
+      x: pt.x,
+      y: pt.y - (def.h / 2),
+      w: def.w,
+      h: def.h,
+      label: '',
+      color: def.color,
+    };
+    saveHistory();
+    nodes.push(node);
+    selectedId = node.id;
+    render(); updateProps(); updateStatus();
+    openInlineEditor(node, true);
   }
 });
 
@@ -2095,13 +2240,13 @@ document.getElementById('btnImportApply').addEventListener('click', () => {
 // ============================================================
 function loadDemo() {
   nodes = [
-    { id:'n1', type:'start',    x:260, y:40,  w:120, h:44,  label:'Начало',    color:'#4fffb0' },
-    { id:'n2', type:'process',  x:240, y:140, w:160, h:54,  label:'Подготовка\nданных', color:'#6b8aff' },
-    { id:'n3', type:'decision', x:245, y:255, w:150, h:80,  label:'Данные\nвалидны?', color:'#c084fc' },
-    { id:'n4', type:'io',       x:420, y:285, w:140, h:50,  label:'Вывод ошибки', color:'#ff6b6b' },
-    { id:'n5', type:'process',  x:240, y:400, w:160, h:54,  label:'Обработка',  color:'#6b8aff' },
-    { id:'n6', type:'io',       x:240, y:515, w:160, h:50,  label:'Вывод результата', color:'#fbbf24' },
-    { id:'n7', type:'start',    x:260, y:625, w:120, h:44,  label:'Конец',      color:'#4fffb0' },
+    { id:'n1', type:'start',    x:260, y:40,  w:120, h:44,  label:'Начало',    color:'#000000' },
+    { id:'n2', type:'process',  x:240, y:140, w:160, h:54,  label:'Подготовка\nданных', color:'#000000' },
+    { id:'n3', type:'decision', x:245, y:255, w:150, h:80,  label:'Данные\nвалидны?', color:'#000000' },
+    { id:'n4', type:'io',       x:420, y:285, w:140, h:50,  label:'Вывод ошибки', color:'#000000' },
+    { id:'n5', type:'process',  x:240, y:400, w:160, h:54,  label:'Обработка',  color:'#000000' },
+    { id:'n6', type:'io',       x:240, y:515, w:160, h:50,  label:'Вывод результата', color:'#000000' },
+    { id:'n7', type:'start',    x:260, y:625, w:120, h:44,  label:'Конец',      color:'#000000' },
   ];
   edges = [
     { id:'e1', from:'n1', to:'n2', fromPort:'b', toPort:'t', label:'' },
