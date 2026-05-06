@@ -108,6 +108,12 @@
     border-bottom: 1.5px solid rgba(79,255,176,0.6);
     padding-bottom: 1px;
   }
+
+  /* Prevent browser text selection during drag/rubber-band */
+  #canvas, #canvasWrap {
+    user-select: none;
+    -webkit-user-select: none;
+  }
 </style>
 </head>
 <body class="dark:bg-dark-bg bg-light-bg dark:text-gray-100 text-gray-800 h-screen overflow-hidden flex flex-col">
@@ -789,9 +795,9 @@ function buildOrthogonalWaypoints(edge, src, dst) {
   const ex = ep.px + td[0] * STUB;
   const ey = ep.py + td[1] * STUB;
 
-  // All other nodes as obstacles (exclude src and dst)
+  // All other nodes as obstacles (exclude src, dst, and text nodes — text is decorative)
   const obstacles = nodes
-    .filter(n => n.id !== src.id && n.id !== dst.id)
+    .filter(n => n.id !== src.id && n.id !== dst.id && n.type !== 'text')
     .map(n => getNodeRect(n, AVOID_MARGIN));
 
   // Also add src and dst themselves as partial obstacles (prevent re-entry)
@@ -1045,30 +1051,7 @@ function render() {
     el.dataset.kind = 'edge';
     g.appendChild(el);
 
-    if (edge.label) {
-      const src = nodes.find(n => n.id === edge.from);
-      const dst = nodes.find(n => n.id === edge.to);
-      if (src && dst) {
-        const srcPorts = getPorts(src);
-        const dstPorts = getPorts(dst);
-        const sp = edge.fromPort ? srcPorts.find(p=>p.id===edge.fromPort)||srcPorts[2] : srcPorts[2];
-        const ep = edge.toPort ? dstPorts.find(p=>p.id===edge.toPort)||dstPorts[0] : dstPorts[0];
-        const lx = (sp.px+ep.px)/2, ly = (sp.py+ep.py)/2;
-        const lbg = document.createElementNS('http://www.w3.org/2000/svg','rect');
-        lbg.setAttribute('x', lx-20); lbg.setAttribute('y', ly-9);
-        lbg.setAttribute('width', 40); lbg.setAttribute('height', 16);
-        lbg.setAttribute('rx', 3); lbg.setAttribute('fill', labelBg);
-        g.appendChild(lbg);
-        const lt = document.createElementNS('http://www.w3.org/2000/svg','text');
-        lt.setAttribute('x', lx); lt.setAttribute('y', ly+3);
-        lt.setAttribute('text-anchor','middle');
-        lt.setAttribute('font-size','10');
-        lt.setAttribute('fill', labelFg);
-        lt.setAttribute('font-family','JetBrains Mono, monospace');
-        lt.textContent = edge.label;
-        g.appendChild(lt);
-      }
-    }
+    // Edge labels removed
 
     // Draw draggable segment handles in orthogonal mode — always render hit areas, show dots only when selected
     // Appended AFTER el so they sit on top and receive pointer events correctly
@@ -1164,10 +1147,19 @@ function render() {
     const strokeWidth = isSelected ? '2.5' : (isGost ? '2' : '1.5');
     const fillColor = nodeFills[node.type] || '#fff';
     if (isTextNode) {
-      // Text node: transparent hit area only; selection shown via SVG cursor rect
+      // Text node: transparent body; add explicit hit rect so drag works everywhere over the text
       bodyShape.setAttribute('fill', 'transparent');
       bodyShape.setAttribute('stroke', 'none');
-      bodyShape.setAttribute('pointer-events', 'fill');
+      bodyShape.setAttribute('pointer-events', 'none');
+      const hitRect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      hitRect.setAttribute('x', node.x);
+      hitRect.setAttribute('y', node.y);
+      hitRect.setAttribute('width', node.w);
+      hitRect.setAttribute('height', node.h);
+      hitRect.setAttribute('fill', 'transparent');
+      hitRect.setAttribute('stroke', 'none');
+      hitRect.setAttribute('pointer-events', 'fill');
+      grp.appendChild(hitRect);
       if (isSelected) {
         const selRect = document.createElementNS('http://www.w3.org/2000/svg','rect');
         selRect.setAttribute('x', node.x - 2);
