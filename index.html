@@ -421,12 +421,41 @@
   </div>
 </div>
 
-<!-- STATUS BAR -->
-<div class="px-4 py-1.5 dark:bg-dark-surface bg-light-surface dark:border-dark-border border-light-border border-t font-mono text-[10px] dark:text-gray-500 text-gray-400 flex gap-5 flex-shrink-0">
-  <div>Узлы: <span class="text-accent" id="statNodes">0</span></div>
-  <div>Связи: <span class="text-accent" id="statEdges">0</span></div>
-  <div>Масштаб: <span class="text-accent" id="statZoom">100</span>%</div>
-  <div id="statMode">Режим: <span class="text-accent">просмотр</span></div>
+<!-- STATUS BAR (contains floating sheet tabs above) -->
+<div class="dark:bg-dark-surface bg-light-surface dark:border-dark-border border-light-border border-t flex items-center flex-shrink-0" style="height:26px;position:relative;overflow:visible;">
+
+  <!-- Sheet tabs — float above the status bar, anchored to its top edge -->
+  <div id="sheetsStrip" style="
+    position:absolute;bottom:100%;left:192px;right:224px;
+    height:28px;display:flex;align-items:flex-end;padding-left:6px;
+    pointer-events:auto;overflow:hidden;
+  ">
+    <div id="sheetTabsContainer" class="flex items-end h-full gap-0 overflow-x-auto" style="scrollbar-width:none;-ms-overflow-style:none;"></div>
+    <button id="btnAddSheet" title="Новый лист"
+      class="flex-shrink-0 flex items-center justify-center font-mono text-[12px] cursor-pointer ml-1 self-center"
+      style="width:22px;height:22px;border-radius:4px;background:transparent;border:none;color:inherit;opacity:0.5;transition:opacity 0.15s;"
+      onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.5'">＋</button>
+  </div>
+
+  <div class="flex items-center gap-5 px-4 font-mono text-[10px] dark:text-gray-500 text-gray-400">
+    <div>Узлы: <span class="text-accent" id="statNodes">0</span></div>
+    <div>Связи: <span class="text-accent" id="statEdges">0</span></div>
+    <div>Масштаб: <span class="text-accent" id="statZoom">100</span>%</div>
+    <div id="statMode">Режим: <span class="text-accent">просмотр</span></div>
+  </div>
+</div>
+
+<!-- Sheet rename modal -->
+<div id="sheetRenameModal" style="display:none;position:fixed;inset:0;z-index:2000;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);">
+  <div class="dark:bg-dark-panel bg-white dark:border-dark-border border-light-border border rounded-xl p-5" style="min-width:260px;">
+    <div class="text-xs font-semibold mb-3 dark:text-gray-200 text-gray-700 font-mono uppercase tracking-wider">Переименовать лист</div>
+    <input id="sheetRenameInput" type="text" maxlength="32"
+      class="w-full dark:bg-dark-bg bg-light-bg dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-700 px-2.5 py-1.5 rounded-md font-mono text-[12px] outline-none focus:border-accent mb-3"/>
+    <div class="flex gap-2 justify-end">
+      <button id="sheetRenameCancel" class="font-mono text-xs px-3 py-1.5 rounded-md dark:bg-dark-surface bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-700 cursor-pointer hover:border-accent hover:text-accent">Отмена</button>
+      <button id="sheetRenameOk" class="font-mono text-xs px-3 py-1.5 rounded-md bg-accent text-black border border-accent font-semibold cursor-pointer hover:bg-emerald-400">OK</button>
+    </div>
+  </div>
 </div>
 
 <!-- Tooltip -->
@@ -2256,6 +2285,300 @@ function loadDemo() {
 
 loadDemo();
 setDiagramStyle('gost');
+
+// ============================================================
+// SHEETS (Excel-like tabs)
+// ============================================================
+let sheets = [
+  { id: 's1', name: 'Лист 1', nodes: JSON.parse(JSON.stringify(nodes)), edges: JSON.parse(JSON.stringify(edges)) }
+];
+let activeSheetId = 's1';
+let sheetIdCounter = 2;
+let renameTargetId = null;
+
+function getSheetTabColors() {
+  const dark = document.documentElement.classList.contains('dark');
+  return {
+    activeBg:    dark ? '#1a1e28' : '#ffffff',
+    activeBorder: '#4fffb0',
+    activeFg:    dark ? '#e8eaf0' : '#1a202c',
+    inactiveBg:  dark ? '#151820' : '#e8ecf4',
+    inactiveFg:  dark ? '#6b7280' : '#9ca3af',
+    hoverBg:     dark ? '#1a1e28' : '#f0f2f7',
+    hoverFg:     dark ? '#d1d5db' : '#4b5563',
+  };
+}
+
+function renderSheetTabs() {
+  const container = document.getElementById('sheetTabsContainer');
+  const c = getSheetTabColors();
+  container.innerHTML = '';
+
+  sheets.forEach(sheet => {
+    const isActive = sheet.id === activeSheetId;
+
+    const tab = document.createElement('div');
+    tab.dataset.sheetId = sheet.id;
+    tab.title = 'Двойной клик — переименовать';
+    tab.style.cssText = `
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 0 10px 0 11px;
+      height: ${isActive ? '26px' : '22px'};
+      margin-bottom: ${isActive ? '0' : '0'};
+      cursor: pointer;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: ${isActive ? '600' : '400'};
+      white-space: nowrap;
+      user-select: none;
+      background: ${isActive ? c.activeBg : c.inactiveBg};
+      color: ${isActive ? c.activeFg : c.inactiveFg};
+      border-top: 2px solid ${isActive ? c.activeBorder : 'rgba(128,128,128,0.25)'};
+      border-left: 1px solid ${isActive ? 'rgba(79,255,176,0.2)' : 'rgba(128,128,128,0.15)'};
+      border-right: 1px solid ${isActive ? 'rgba(79,255,176,0.2)' : 'rgba(128,128,128,0.15)'};
+      border-bottom: none;
+      border-radius: 4px 4px 0 0;
+      transition: color 0.15s, height 0.1s;
+      align-self: flex-end;
+      flex-shrink: 0;
+    `;
+
+    const label = document.createElement('span');
+    label.textContent = sheet.name;
+    tab.appendChild(label);
+
+    // Close button (only show on active or hover)
+    if (sheets.length > 1) {
+      const closeBtn = document.createElement('span');
+      closeBtn.textContent = '×';
+      closeBtn.style.cssText = `
+        font-size:13px;line-height:1;opacity:${isActive ? '0.5' : '0'};
+        margin-left:2px;border-radius:3px;padding:0 2px;transition:opacity 0.15s,background 0.15s;
+      `;
+      closeBtn.addEventListener('mouseenter', () => { closeBtn.style.opacity = '1'; });
+      closeBtn.addEventListener('mouseleave', () => { closeBtn.style.opacity = isActive ? '0.5' : '0'; });
+      closeBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        deleteSheet(sheet.id);
+      });
+      tab.appendChild(closeBtn);
+
+      tab.addEventListener('mouseenter', () => { if (!isActive) closeBtn.style.opacity = '0.4'; });
+      tab.addEventListener('mouseleave', () => { if (!isActive) closeBtn.style.opacity = '0'; });
+    }
+
+    // Single click → switch
+    tab.addEventListener('click', () => switchSheet(sheet.id));
+    // Double click → rename
+    tab.addEventListener('dblclick', e => { e.stopPropagation(); openRenameModal(sheet.id, sheet.name); });
+    // Right click → context menu
+    tab.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); showSheetContextMenu(e, sheet.id, sheet.name); });
+
+    if (!isActive) {
+      tab.addEventListener('mouseenter', () => { tab.style.color = c.hoverFg; tab.style.background = c.hoverBg; tab.style.height = '24px'; });
+      tab.addEventListener('mouseleave', () => { tab.style.color = c.inactiveFg; tab.style.background = c.inactiveBg; tab.style.height = '22px'; });
+    }
+
+    container.appendChild(tab);
+  });
+
+  // Style the + button to match inactive tabs
+  const addBtn = document.getElementById('btnAddSheet');
+  if (addBtn) {
+    const c2 = getSheetTabColors();
+    addBtn.style.background = c2.inactiveBg;
+    addBtn.style.borderRadius = '4px 4px 0 0';
+    addBtn.style.border = '1px solid rgba(128,128,128,0.15)';
+    addBtn.style.borderTop = '2px solid rgba(128,128,128,0.25)';
+    addBtn.style.borderBottom = 'none';
+    addBtn.style.color = c2.inactiveFg;
+    addBtn.style.height = '22px';
+    addBtn.style.alignSelf = 'flex-end';
+    addBtn.onmouseenter = () => { addBtn.style.background = c2.hoverBg; addBtn.style.opacity = '1'; };
+    addBtn.onmouseleave = () => { addBtn.style.background = c2.inactiveBg; addBtn.style.opacity = '0.6'; };
+  }
+}
+
+function saveCurrentSheet() {
+  const sheet = sheets.find(s => s.id === activeSheetId);
+  if (!sheet) return;
+  sheet.nodes = JSON.parse(JSON.stringify(nodes));
+  sheet.edges = JSON.parse(JSON.stringify(edges));
+}
+
+function switchSheet(id) {
+  if (id === activeSheetId) return;
+  saveCurrentSheet();
+  activeSheetId = id;
+  const sheet = sheets.find(s => s.id === id);
+  nodes = JSON.parse(JSON.stringify(sheet.nodes));
+  edges = JSON.parse(JSON.stringify(sheet.edges));
+  selectedId = null; selectedIds.clear();
+  history = []; historyIndex = -1;
+  render(); updateProps(); updateStatus();
+  renderSheetTabs();
+}
+
+function addSheet() {
+  saveCurrentSheet();
+  const id = 's' + (sheetIdCounter++);
+  const name = 'Лист ' + (sheets.length + 1);
+  sheets.push({ id, name, nodes: [], edges: [] });
+  activeSheetId = id;
+  nodes = []; edges = [];
+  selectedId = null; selectedIds.clear();
+  history = []; historyIndex = -1;
+  render(); updateProps(); updateStatus();
+  renderSheetTabs();
+  // Scroll to end
+  setTimeout(() => {
+    const c = document.getElementById('sheetTabsContainer');
+    c.scrollLeft = c.scrollWidth;
+  }, 50);
+}
+
+function deleteSheet(id) {
+  if (sheets.length <= 1) return;
+  const idx = sheets.findIndex(s => s.id === id);
+  sheets.splice(idx, 1);
+  if (activeSheetId === id) {
+    const nextIdx = Math.min(idx, sheets.length - 1);
+    activeSheetId = sheets[nextIdx].id;
+    const sheet = sheets[nextIdx];
+    nodes = JSON.parse(JSON.stringify(sheet.nodes));
+    edges = JSON.parse(JSON.stringify(sheet.edges));
+    selectedId = null; selectedIds.clear();
+    history = []; historyIndex = -1;
+    render(); updateProps(); updateStatus();
+  }
+  renderSheetTabs();
+}
+
+function duplicateSheet(id) {
+  saveCurrentSheet();
+  const src = sheets.find(s => s.id === id);
+  if (!src) return;
+  const newId = 's' + (sheetIdCounter++);
+  const newName = src.name + ' (копия)';
+  const srcIdx = sheets.findIndex(s => s.id === id);
+  sheets.splice(srcIdx + 1, 0, {
+    id: newId,
+    name: newName,
+    nodes: JSON.parse(JSON.stringify(src.nodes)),
+    edges: JSON.parse(JSON.stringify(src.edges)),
+  });
+  activeSheetId = newId;
+  nodes = JSON.parse(JSON.stringify(src.nodes));
+  edges = JSON.parse(JSON.stringify(src.edges));
+  selectedId = null; selectedIds.clear();
+  history = []; historyIndex = -1;
+  render(); updateProps(); updateStatus();
+  renderSheetTabs();
+  setTimeout(() => {
+    const tab = document.querySelector(`[data-sheet-id="${newId}"]`);
+    if (tab) tab.scrollIntoView({ inline: 'nearest' });
+  }, 50);
+}
+
+// ---- Sheet context menu ----
+let _sheetCtxMenu = null;
+function showSheetContextMenu(e, id, name) {
+  removeSheetContextMenu();
+  const dark = document.documentElement.classList.contains('dark');
+  const menu = document.createElement('div');
+  menu.id = 'sheetCtxMenu';
+  menu.style.cssText = `
+    position:fixed;left:${e.clientX}px;top:-9999px;z-index:3000;
+    min-width:160px;border-radius:8px;overflow:hidden;
+    background:${dark ? '#1a1e28' : '#ffffff'};
+    border:1px solid ${dark ? '#252a38' : '#dde1ec'};
+    box-shadow:0 8px 24px rgba(0,0,0,0.35);
+    font-family:'JetBrains Mono',monospace;font-size:11px;
+  `;
+  const items = [
+    { label: '✏️  Переименовать', action: () => openRenameModal(id, name) },
+    { label: '⧉  Дублировать', action: () => duplicateSheet(id) },
+    { label: '🗑  Удалить', action: () => deleteSheet(id), danger: true, disabled: sheets.length <= 1 },
+  ];
+  items.forEach(item => {
+    const el = document.createElement('div');
+    el.textContent = item.label;
+    el.style.cssText = `
+      padding:7px 14px;cursor:${item.disabled ? 'not-allowed' : 'pointer'};
+      color:${item.disabled ? (dark ? '#4b5563' : '#9ca3af') : item.danger ? '#ff6b6b' : (dark ? '#e8eaf0' : '#1a202c')};
+      transition:background 0.1s;
+    `;
+    if (!item.disabled) {
+      el.addEventListener('mouseenter', () => el.style.background = dark ? '#252a38' : '#f0f2f7');
+      el.addEventListener('mouseleave', () => el.style.background = 'transparent');
+      el.addEventListener('click', () => { removeSheetContextMenu(); item.action(); });
+    }
+    menu.appendChild(el);
+  });
+  document.body.appendChild(menu);
+  _sheetCtxMenu = menu;
+  // Position strictly above the click point
+  const mh = menu.offsetHeight;
+  menu.style.top = (e.clientY - mh) + 'px';
+  setTimeout(() => document.addEventListener('click', removeSheetContextMenu, { once: true }), 0);
+}
+function removeSheetContextMenu() {
+  if (_sheetCtxMenu) { _sheetCtxMenu.remove(); _sheetCtxMenu = null; }
+}
+
+function openRenameModal(id, currentName) {
+  renameTargetId = id;
+  const modal = document.getElementById('sheetRenameModal');
+  const input = document.getElementById('sheetRenameInput');
+  input.value = currentName;
+  modal.style.display = 'flex';
+  setTimeout(() => { input.focus(); input.select(); }, 50);
+}
+
+document.getElementById('sheetRenameCancel').addEventListener('click', () => {
+  document.getElementById('sheetRenameModal').style.display = 'none';
+  renameTargetId = null;
+});
+
+document.getElementById('sheetRenameOk').addEventListener('click', () => {
+  const input = document.getElementById('sheetRenameInput');
+  const name = input.value.trim();
+  if (name && renameTargetId) {
+    const sheet = sheets.find(s => s.id === renameTargetId);
+    if (sheet) sheet.name = name;
+    renderSheetTabs();
+  }
+  document.getElementById('sheetRenameModal').style.display = 'none';
+  renameTargetId = null;
+});
+
+document.getElementById('sheetRenameInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('sheetRenameOk').click();
+  if (e.key === 'Escape') document.getElementById('sheetRenameCancel').click();
+});
+
+document.getElementById('btnAddSheet').addEventListener('click', addSheet);
+
+// Update sheet tabs when theme changes
+const _origApplyTheme = applyTheme;
+// Re-render tabs on theme change (already wrapped via themeToggle listener)
+themeToggle.addEventListener('change', () => setTimeout(renderSheetTabs, 10));
+
+// Initial render
+renderSheetTabs();
+
+// Save sheet state before clear
+const origBtnClear = document.getElementById('btnClear');
+origBtnClear.addEventListener('click', () => {
+  setTimeout(() => {
+    saveCurrentSheet();
+    const sh = sheets.find(s => s.id === activeSheetId);
+    if (sh) { sh.nodes = []; sh.edges = []; }
+  }, 100);
+}, true);
 </script>
 </body>
 </html>
