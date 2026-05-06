@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FlowCraft — Конструктор блок-схем</title>
+<title>ГОСТФлоу — Конструктор блок-схем</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
@@ -121,7 +121,7 @@
 <!-- HEADER -->
 <header class="flex items-center justify-between px-5 py-2.5 dark:bg-dark-surface bg-light-surface dark:border-dark-border border-light-border border-b z-50 flex-shrink-0">
   <div class="text-lg font-black tracking-tight text-accent font-syne">
-    Flow<span class="dark:text-gray-500 text-gray-400">Craft</span>
+    ГОСТ<span class="dark:text-gray-500 text-gray-400">Флоу</span>
   </div>
   <div class="flex items-center gap-2 flex-wrap">
     <button class="btn font-mono text-xs px-3.5 py-1.5 rounded-md dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-700 cursor-pointer transition-all hover:border-accent hover:text-accent" id="btnUndo" title="Ctrl+Z">↩ Отмена</button>
@@ -281,9 +281,11 @@
         <marker id="arrowhead-active" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
           <polygon points="0 0, 10 3.5, 0 7" fill="#4fffb0"/>
         </marker>
-        <filter id="glow">
-          <feGaussianBlur stdDeviation="3" result="blur"/>
-          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+          <feFlood flood-color="#4fffb0" flood-opacity="1" result="color"/>
+          <feComposite in="color" in2="SourceGraphic" operator="in" result="coloredBlur"/>
+          <feGaussianBlur in="coloredBlur" stdDeviation="5" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
       </defs>
       <g id="canvasGroup"></g>
@@ -328,7 +330,7 @@
       <div id="propsBody" class="px-3.5 py-3.5 flex flex-col gap-3" style="display:none">
 
         <!-- Text -->
-        <div>
+        <div id="propTextGroup">
           <label class="block text-[10px] font-semibold tracking-wide uppercase dark:text-gray-500 text-gray-400 mb-1">Текст</label>
           <textarea id="propText" rows="3"
             class="w-full dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-800 px-2.5 py-1.5 rounded-md font-mono text-[11px] outline-none resize-y transition-colors focus:border-accent"></textarea>
@@ -1132,9 +1134,9 @@ function render() {
     sr.setAttribute('y', selectionRect.y);
     sr.setAttribute('width', Math.abs(selectionRect.w));
     sr.setAttribute('height', Math.abs(selectionRect.h));
-    sr.setAttribute('fill', 'rgba(79,255,176,0.07)');
+    sr.setAttribute('fill', 'rgba(79,255,176,0.32)');
     sr.setAttribute('stroke', '#4fffb0');
-    sr.setAttribute('stroke-width', '1');
+    sr.setAttribute('stroke-width', '2');
     sr.setAttribute('stroke-dasharray', '5,3');
     g.appendChild(sr);
   }
@@ -1154,7 +1156,9 @@ function render() {
       const shadow = document.createElementNS('http://www.w3.org/2000/svg','g');
       shadow.innerHTML = getNodeShape(node);
       const shadowShape = shadow.firstChild;
-      const shadowFill = isDark() ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.08)';
+      const shadowFill = isSelected
+        ? 'rgba(79,255,176,0.6)'
+        : (isDark() ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.08)');
       if (shadowShape.tagName === 'g') {
         Array.from(shadowShape.children).forEach(child => {
           if (child.tagName !== 'line') child.setAttribute('fill', shadowFill);
@@ -1198,9 +1202,9 @@ function render() {
         selRect.setAttribute('rx', '2');
         selRect.setAttribute('fill', 'none');
         selRect.setAttribute('stroke', isGost ? '#555' : '#4fffb0');
-        selRect.setAttribute('stroke-width', '1');
+        selRect.setAttribute('stroke-width', '2');
         selRect.setAttribute('stroke-dasharray', '5,3');
-        selRect.setAttribute('opacity', '0.5');
+        selRect.setAttribute('opacity', '1');
         selRect.setAttribute('pointer-events', 'none');
         grp.insertBefore(selRect, grp.firstChild);
       }
@@ -1419,6 +1423,7 @@ function updateProps() {
     document.getElementById('propText').value = el.label || '';
     document.getElementById('propType').value = el.type;
     document.getElementById('propType').style.display = '';
+    document.getElementById('propTextGroup').style.display = '';
 
     // Font controls — show for nodes only
     document.getElementById('propFontGroup').style.display = '';
@@ -1443,7 +1448,7 @@ function updateProps() {
       sw.classList.toggle('active', sw.dataset.color === el.color);
     });
   } else {
-    document.getElementById('propText').value = el.label || '';
+    document.getElementById('propTextGroup').style.display = 'none';
     document.getElementById('propType').style.display = 'none';
     document.getElementById('propFontGroup').style.display = 'none';
     document.getElementById('propFontStyleGroup').style.display = 'none';
@@ -1709,7 +1714,9 @@ svg.addEventListener('mousedown', e => {
     const axis = segHandleEl.dataset.axis;
     saveHistory();
     draggingSegment = { edgeId, segIndex, axis };
+    selectedIds.clear();
     selectedId = edgeId;
+    render(); updateProps();
     e.stopPropagation(); return;
   }
 
