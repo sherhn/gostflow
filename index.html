@@ -237,17 +237,19 @@
       <div class="text-[9px] font-semibold tracking-widest uppercase dark:text-gray-500 text-gray-400 mb-2">Подсказки</div>
       <div class="font-mono text-[10px] dark:text-gray-500 text-gray-400 leading-[1.8]">
         • Перетащи фигуру<br>
-        • Двойной клик — выбор<br>
         • Клик — выбор<br>
         • Hover → порт → стрелка<br>
         • 🟡 порт — перенаправить<br>
-        • Del — удалить<br>
+        • Del / Backspace — удалить<br>
         • Ctrl+C/X/V — копировать<br>
         • Ctrl+D — дублировать<br>
+        • Ctrl+A — выделить всё<br>
+        • Ctrl+Z — отмена<br>
+        • Ctrl+Y / Ctrl+Shift+Z — повтор<br>
+        • ←↑→↓ — сдвиг (Shift×10)<br>
         • ПКМ — контекст. меню<br>
         • Колесо — масштаб<br>
-        • ПКМ+тащи — панорама<br>
-        • Ctrl+Z/Y — история
+        • ПКМ+тащи — панорама
       </div>
     </div>
   </div>
@@ -2571,41 +2573,77 @@ svg.addEventListener('contextmenu', e => {
 // ============================================================
 // KEYBOARD
 // ============================================================
+// Select all nodes
+function selectAll() {
+  selectedIds.clear();
+  nodes.forEach(n => selectedIds.add(n.id));
+  selectedId = null;
+  render(); updateProps(); updateStatus();
+}
+
 document.addEventListener('keydown', e => {
   const tag = e.target.tagName;
   const isEditing = tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable;
 
-  // Undo/Redo — intercept globally, but never when user is typing
-  if (e.ctrlKey && e.key === 'z') {
-    if (!isEditing) { e.preventDefault(); e.stopPropagation(); undo(); }
-    return;
-  }
-  if (e.ctrlKey && (e.key === 'y' || e.key === 'Y')) {
-    if (!isEditing) { e.preventDefault(); e.stopPropagation(); redo(); }
-    return;
-  }
+  // ── Ctrl / Meta combos ───────────────────────────────────────
+  // ВАЖНО: используем e.code (физическая клавиша), а не e.key,
+  // чтобы сочетания работали при любой раскладке (в т.ч. русской).
+  if (e.ctrlKey || e.metaKey) {
+    const code = e.code; // 'KeyZ', 'KeyC', 'KeyV', ... — не зависит от раскладки
 
-  // Copy / Cut / Paste / Duplicate
-  if (e.ctrlKey && e.key === 'c') {
-    if (!isEditing) { e.preventDefault(); copySelected(); }
-    return;
-  }
-  if (e.ctrlKey && e.key === 'x') {
-    if (!isEditing) { e.preventDefault(); cutSelected(); }
-    return;
-  }
-  if (e.ctrlKey && e.key === 'v') {
-    if (!isEditing) { e.preventDefault(); pasteClipboard(24, 24); }
-    return;
-  }
-  if (e.ctrlKey && e.key === 'd') {
-    if (!isEditing) { e.preventDefault(); duplicateSelected(); }
-    return;
+    // Undo: Ctrl+Z
+    if (code === 'KeyZ' && !e.shiftKey) {
+      e.preventDefault(); e.stopPropagation();
+      if (!isEditing) undo();
+      return;
+    }
+    // Redo: Ctrl+Y  или  Ctrl+Shift+Z
+    if (code === 'KeyY' || (code === 'KeyZ' && e.shiftKey)) {
+      e.preventDefault(); e.stopPropagation();
+      if (!isEditing) redo();
+      return;
+    }
+    // Copy: Ctrl+C
+    if (code === 'KeyC') {
+      if (!isEditing) { e.preventDefault(); e.stopPropagation(); copySelected(); }
+      return;
+    }
+    // Cut: Ctrl+X
+    if (code === 'KeyX') {
+      if (!isEditing) { e.preventDefault(); e.stopPropagation(); cutSelected(); }
+      return;
+    }
+    // Paste: Ctrl+V
+    if (code === 'KeyV') {
+      if (!isEditing) { e.preventDefault(); e.stopPropagation(); pasteClipboard(24, 24); }
+      return;
+    }
+    // Duplicate: Ctrl+D — также блокирует «Добавить в закладки»
+    if (code === 'KeyD') {
+      e.preventDefault(); e.stopPropagation();
+      if (!isEditing) duplicateSelected();
+      return;
+    }
+    // Select All: Ctrl+A — блокирует выделение текста страницы
+    if (code === 'KeyA') {
+      e.preventDefault(); e.stopPropagation();
+      if (!isEditing) selectAll();
+      return;
+    }
+    // Ctrl+S — блокируем «Сохранить страницу» браузера
+    if (code === 'KeyS') {
+      e.preventDefault(); e.stopPropagation();
+      return;
+    }
   }
 
   if (isEditing) return;
 
+  // ── Single-key shortcuts (only when not editing) ─────────────
+
+  // Delete / Backspace — e.preventDefault() MUST be called first to stop browser back-navigation
   if (e.key === 'Delete' || e.key === 'Backspace') {
+    e.preventDefault(); e.stopPropagation();
     let changed = false;
     if (selectedId) {
       const hasEdge = edges.find(ed => ed.id === selectedId);
@@ -2627,10 +2665,36 @@ document.addEventListener('keydown', e => {
       selectedIds.clear();
     }
     render(); updateProps(); updateStatus();
+    return;
   }
 
-  if (e.key === 'Escape') { connectingFrom = null; connectingTemp = null; selectedId = null; selectedIds.clear(); render(); updateProps(); }
-}, true); // capture phase — intercepts before browser default (undo/redo handled safely)
+  // Escape — deselect / cancel connecting
+  if (e.key === 'Escape') {
+    e.preventDefault(); e.stopPropagation();
+    connectingFrom = null; connectingTemp = null;
+    selectedId = null; selectedIds.clear();
+    render(); updateProps();
+    return;
+  }
+
+  // Arrow keys — nudge selected nodes (1px normal, 10px with Shift)
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+    const hasSelection = selectedIds.size > 0 || (selectedId && nodes.find(n => n.id === selectedId));
+    if (!hasSelection) return;
+    e.preventDefault(); e.stopPropagation();
+    const step = e.shiftKey ? 10 : 1;
+    const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
+    const dy = e.key === 'ArrowUp'   ? -step : e.key === 'ArrowDown'  ? step : 0;
+    saveHistory();
+    const ids = selectedIds.size > 0 ? [...selectedIds] : [selectedId];
+    nodes.forEach(n => {
+      if (ids.includes(n.id)) { n.x += dx; n.y += dy; }
+    });
+    render(); updateProps(); updateStatus();
+    return;
+  }
+
+}, true); // capture phase — runs before any child handler and before browser defaults
 
 // ============================================================
 // TOOLBAR BUTTONS
