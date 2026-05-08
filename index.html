@@ -232,6 +232,20 @@
       </div>
     </div>
 
+    <!-- Custom polygon -->
+    <div class="px-3 pt-3 pb-3 dark:border-dark-border border-light-border border-t">
+      <div class="text-[9px] font-semibold tracking-widest uppercase dark:text-gray-500 text-gray-400 mb-2">Произвольная</div>
+      <button id="paletteCustomShape"
+        class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg dark:border-dark-border border-light-border border cursor-pointer transition-all text-xs font-semibold dark:text-gray-200 text-gray-700 select-none hover:border-accent hover:text-accent dark:bg-dark-panel bg-light-panel text-left"
+        title="Кликните, затем ставьте точки на холсте. Двойной клик или Enter — завершить.">
+        <div class="w-7 h-5 flex items-center justify-center flex-shrink-0">
+          <svg width="24" height="20" viewBox="0 0 24 20"><polygon points="12,1 22,7 18,18 6,18 2,7" fill="none" stroke="#a78bfa" stroke-width="1.5"/><circle cx="12" cy="1" r="2" fill="#a78bfa"/><circle cx="22" cy="7" r="2" fill="#a78bfa"/><circle cx="18" cy="18" r="2" fill="#a78bfa"/><circle cx="6" cy="18" r="2" fill="#a78bfa"/><circle cx="2" cy="7" r="2" fill="#a78bfa"/></svg>
+        </div>
+        <span id="paletteCustomLabel">✏ Нарисовать</span>
+      </button>
+      <div class="mt-1.5 font-mono text-[9px] dark:text-gray-500 text-gray-400 leading-[1.7]">Клик → точки<br>2×клик → готово<br>Esc → отмена</div>
+    </div>
+
     <!-- Tips -->
     <div class="px-3 pt-3.5 pb-3">
       <div class="text-[9px] font-semibold tracking-widest uppercase dark:text-gray-500 text-gray-400 mb-2">Подсказки</div>
@@ -333,6 +347,7 @@
             <option value="loop_end">Конец цикла</option>
             <option value="subprogram">Подпрограмма</option>
             <option value="comment">Комментарий</option>
+            <option value="custom">Произвольная</option>
           </select>
         </div>
 
@@ -423,6 +438,25 @@
           class="mt-1 w-full py-1.5 bg-transparent border border-accent2 text-accent2 rounded-md cursor-pointer font-mono text-[11px] transition-all hover:bg-accent2 hover:text-white">
           🗑 Удалить элемент
         </button>
+
+        <!-- Edit polygon points (only for custom type) -->
+        <button id="btnEditPolygon" style="display:none"
+          class="w-full py-1.5 bg-transparent border border-violet-400 text-violet-400 rounded-md cursor-pointer font-mono text-[11px] transition-all hover:bg-violet-400 hover:text-white">
+          ✏ Рисовать заново
+        </button>
+
+        <!-- Custom points editor panel -->
+        <div id="customPointsEditor" style="display:none">
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-[10px] font-semibold tracking-wide uppercase dark:text-gray-500 text-gray-400">Точки фигуры</label>
+            <button id="btnAddCustomPoint"
+              class="text-[9px] font-mono px-1.5 py-0.5 rounded border border-accent text-accent cursor-pointer hover:bg-accent hover:text-black transition-all">
+              + точка
+            </button>
+          </div>
+          <div id="customPointsList" class="flex flex-col gap-1"></div>
+          <div class="mt-1 font-mono text-[9px] dark:text-gray-500 text-gray-400 leading-relaxed">Тащи ⠿ для смены порядка</div>
+        </div>
       </div>
     </div>
 
@@ -581,6 +615,12 @@ let draggingSegment = null; // { edgeId, segIndex, axis }
 // Clipboard
 let clipboard = null; // { nodes: [...], edges: [...] }
 
+// Polygon drawing state
+let polygonDrawMode = false;
+let polygonPoints = []; // [{x,y}] absolute SVG canvas coords
+let polygonCursorPt = null;
+let polygonEditNodeId = null; // id of node being re-edited
+
 // ============================================================
 // TAB SWITCHING
 // ============================================================
@@ -632,6 +672,7 @@ const NODE_DEFAULTS = {
   loop_end:   { w: 120,  h: 80,   color: '#000000', label: 'Конец цикла',  paramA: 80 },
   subprogram: { w: 120,  h: 80,   color: '#000000', label: 'Подпрограмма', paramA: 80 },
   comment:    { w: 60,   h: 80,   color: '#000000', label: 'Комментарий', paramA: 80 },
+  custom:     { w: 120,  h: 80,   color: '#000000', label: '' },
 };
 
 // ============================================================
@@ -723,6 +764,13 @@ function getNodeShape(node) {
         <line x1="${x}" y1="${y+h}" x2="${x+bw}" y2="${y+h}" stroke-width="1.5"/>
       </g>`;
     }
+    // Произвольная фигура — polygon из нормализованных точек
+    case 'custom': {
+      const pts = node.customPoints && node.customPoints.length >= 3
+        ? node.customPoints.map(([rx, ry]) => `${x + rx*w},${y + ry*h}`).join(' ')
+        : `${x},${y+h/2} ${x+w/2},${y} ${x+w},${y+h/2} ${x+w/2},${y+h}`;
+      return `<polygon points="${pts}"/>`;
+    }
   }
 }
 function getPorts(node) {
@@ -784,6 +832,16 @@ function getPorts(node) {
     b = { id:'b', px: x,     py: y+h };
     l = { id:'l', px: x,     py: y+h/2 };
     return [t, b, l];
+  } else if (type === 'custom') {
+    // Ports at midpoints of each polygon edge
+    const rawPts = node.customPoints && node.customPoints.length >= 3
+      ? node.customPoints.map(([rx, ry]) => [x + rx*w, y + ry*h])
+      : [[x, y+h/2],[x+w/2, y],[x+w, y+h/2],[x+w/2, y+h]];
+    const ports = rawPts.map(([px2, py2], i) => {
+      const [nx, ny] = rawPts[(i+1) % rawPts.length];
+      return { id: 'p'+i, px: (px2+nx)/2, py: (py2+ny)/2 };
+    });
+    return ports;
   }
 
   return [t, r, b, l];
@@ -1113,10 +1171,10 @@ function render() {
   const labelBg   = isGost ? '#ffffff'  : (isDark() ? '#131828' : '#ffffff');
   const labelFg   = isGost ? '#000000'  : (isDark() ? '#9ca3af' : '#6b7280');
   const nodeFills = isGost
-    ? { text:'transparent', start:'#ffffff', process:'#ffffff', decision:'#ffffff', io:'#ffffff', connector:'#ffffff', for:'#ffffff', subprogram:'#ffffff', database:'#ffffff', document:'#ffffff', manual:'#ffffff', comment:'#ffffff' }
+    ? { text:'transparent', start:'#ffffff', process:'#ffffff', decision:'#ffffff', io:'#ffffff', connector:'#ffffff', for:'#ffffff', subprogram:'#ffffff', database:'#ffffff', document:'#ffffff', manual:'#ffffff', comment:'#ffffff', custom:'#ffffff' }
     : (isDark()
-      ? { text:'transparent', start:'#0f2b1a', process:'#0d1a35', decision:'#1a0d2b', io:'#2b1f0a', connector:'#2b0d0d', for:'#0d2b20', subprogram:'#0d2b2b', database:'#2b0d20', document:'#2b1a0d', manual:'#250d2b', comment:'#0d2b14' }
-      : { text:'transparent', start:'#d1fae5', process:'#dbeafe', decision:'#ede9fe', io:'#fef3c7', connector:'#fee2e2', for:'#d1fae5', subprogram:'#cffafe', database:'#fce7f3', document:'#ffedd5', manual:'#fae8ff', comment:'#f0fdf4' });
+      ? { text:'transparent', start:'#0f2b1a', process:'#0d1a35', decision:'#1a0d2b', io:'#2b1f0a', connector:'#2b0d0d', for:'#0d2b20', subprogram:'#0d2b2b', database:'#2b0d20', document:'#2b1a0d', manual:'#250d2b', comment:'#0d2b14', custom:'#1e0d2b' }
+      : { text:'transparent', start:'#d1fae5', process:'#dbeafe', decision:'#ede9fe', io:'#fef3c7', connector:'#fee2e2', for:'#d1fae5', subprogram:'#cffafe', database:'#fce7f3', document:'#ffedd5', manual:'#fae8ff', comment:'#f0fdf4', custom:'#f3e8ff' });
 
   // Update arrowhead colour for GOST
   const arrowEl = document.getElementById('arrowhead');
@@ -1460,6 +1518,79 @@ function render() {
     g.appendChild(line);
   }
 
+  // Polygon draw preview
+  if (polygonDrawMode && polygonPoints.length > 0) {
+    // Draw snap guide lines if cursor is snapping
+    if (polygonCursorPt && polygonPoints.length > 0) {
+      const SNAP_THRESHOLD = 12 / zoom;
+      polygonPoints.forEach(ep => {
+        const snapX = Math.abs(polygonCursorPt.x - ep.x) < SNAP_THRESHOLD;
+        const snapY = Math.abs(polygonCursorPt.y - ep.y) < SNAP_THRESHOLD;
+        if (snapX) {
+          const gl = document.createElementNS('http://www.w3.org/2000/svg','line');
+          gl.setAttribute('x1', ep.x); gl.setAttribute('y1', Math.min(ep.y, polygonCursorPt.y) - 40);
+          gl.setAttribute('x2', ep.x); gl.setAttribute('y2', Math.max(ep.y, polygonCursorPt.y) + 40);
+          gl.setAttribute('stroke','#4fffb0'); gl.setAttribute('stroke-width','0.7');
+          gl.setAttribute('stroke-dasharray','3,3'); gl.setAttribute('pointer-events','none');
+          gl.setAttribute('opacity','0.6');
+          g.appendChild(gl);
+        }
+        if (snapY) {
+          const gl = document.createElementNS('http://www.w3.org/2000/svg','line');
+          gl.setAttribute('x1', Math.min(ep.x, polygonCursorPt.x) - 40); gl.setAttribute('y1', ep.y);
+          gl.setAttribute('x2', Math.max(ep.x, polygonCursorPt.x) + 40); gl.setAttribute('y2', ep.y);
+          gl.setAttribute('stroke','#4fffb0'); gl.setAttribute('stroke-width','0.7');
+          gl.setAttribute('stroke-dasharray','3,3'); gl.setAttribute('pointer-events','none');
+          gl.setAttribute('opacity','0.6');
+          g.appendChild(gl);
+        }
+      });
+    }
+    const allPts = polygonCursorPt ? [...polygonPoints, polygonCursorPt] : polygonPoints;
+    if (allPts.length >= 3) {
+      const polyEl = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+      polyEl.setAttribute('points', allPts.map(p=>`${p.x},${p.y}`).join(' '));
+      polyEl.setAttribute('fill', 'rgba(167,139,250,0.18)');
+      polyEl.setAttribute('stroke', '#a78bfa');
+      polyEl.setAttribute('stroke-width', '1.5');
+      polyEl.setAttribute('stroke-dasharray', '6,3');
+      polyEl.setAttribute('pointer-events','none');
+      g.appendChild(polyEl);
+    } else if (allPts.length === 2) {
+      const lineEl = document.createElementNS('http://www.w3.org/2000/svg','line');
+      lineEl.setAttribute('x1', allPts[0].x); lineEl.setAttribute('y1', allPts[0].y);
+      lineEl.setAttribute('x2', allPts[1].x); lineEl.setAttribute('y2', allPts[1].y);
+      lineEl.setAttribute('stroke','#a78bfa'); lineEl.setAttribute('stroke-width','1.5');
+      lineEl.setAttribute('stroke-dasharray','6,3'); lineEl.setAttribute('pointer-events','none');
+      g.appendChild(lineEl);
+    }
+    polygonPoints.forEach((pt, i) => {
+      const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      c.setAttribute('cx', pt.x); c.setAttribute('cy', pt.y); c.setAttribute('r', i===0?7:5);
+      c.setAttribute('fill', i===0 ? '#4fffb0' : '#a78bfa');
+      c.setAttribute('stroke', isDark()?'#0d0f14':'#fff'); c.setAttribute('stroke-width','1.5');
+      c.setAttribute('pointer-events','none');
+      g.appendChild(c);
+      const tt = document.createElementNS('http://www.w3.org/2000/svg','text');
+      tt.setAttribute('x', pt.x); tt.setAttribute('y', pt.y-9);
+      tt.setAttribute('text-anchor','middle'); tt.setAttribute('font-size','9');
+      tt.setAttribute('fill', '#a78bfa'); tt.setAttribute('font-family','monospace');
+      tt.setAttribute('pointer-events','none');
+      tt.textContent = i===0?'●':(i+1);
+      g.appendChild(tt);
+    });
+    if (polygonPoints.length >= 3) {
+      const last = polygonPoints[polygonPoints.length-1];
+      const first = polygonPoints[0];
+      const hint = document.createElementNS('http://www.w3.org/2000/svg','line');
+      hint.setAttribute('x1', last.x); hint.setAttribute('y1', last.y);
+      hint.setAttribute('x2', first.x); hint.setAttribute('y2', first.y);
+      hint.setAttribute('stroke','rgba(167,139,250,0.4)'); hint.setAttribute('stroke-width','1');
+      hint.setAttribute('stroke-dasharray','3,3'); hint.setAttribute('pointer-events','none');
+      g.appendChild(hint);
+    }
+  }
+
   updateMinimap();
 }
 
@@ -1512,6 +1643,90 @@ function updateMinimap() {
 }
 
 // ============================================================
+// POLYGON DRAW MODE
+// ============================================================
+function startPolygonDraw(editNodeId) {
+  polygonDrawMode = true;
+  polygonPoints = [];
+  polygonCursorPt = null;
+  polygonEditNodeId = editNodeId || null;
+  if (editNodeId) {
+    // Pre-populate points from existing node
+    const node = nodes.find(n => n.id === editNodeId);
+    if (node && node.customPoints) {
+      polygonPoints = node.customPoints.map(([rx,ry]) => ({ x: node.x + rx*node.w, y: node.y + ry*node.h }));
+    }
+  }
+  canvasWrap.style.cursor = 'crosshair';
+  document.getElementById('paletteCustomLabel').textContent = '⏹ Рисование...';
+  document.getElementById('statMode').innerHTML = 'Режим: <span style="color:#a78bfa;font-weight:700">рисование фигуры — 2×клик или Enter для завершения</span>';
+  render();
+}
+
+function cancelPolygonDraw() {
+  polygonDrawMode = false;
+  polygonPoints = [];
+  polygonCursorPt = null;
+  polygonEditNodeId = null;
+  canvasWrap.style.cursor = '';
+  document.getElementById('paletteCustomLabel').textContent = '✏ Нарисовать';
+  document.getElementById('statMode').innerHTML = 'Режим: <span class="text-accent">просмотр</span>';
+  render();
+}
+
+function finalizePolygon() {
+  if (polygonPoints.length < 3) { cancelPolygonDraw(); return; }
+  // Compute bounding box
+  const xs = polygonPoints.map(p => p.x);
+  const ys = polygonPoints.map(p => p.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const bw = maxX - minX || 1, bh = maxY - minY || 1;
+  // Normalize points to [0,1]×[0,1] relative to bounding box
+  const customPoints = polygonPoints.map(p => [
+    (p.x - minX) / bw,
+    (p.y - minY) / bh
+  ]);
+  saveHistory();
+  if (polygonEditNodeId) {
+    // Update existing node
+    const node = nodes.find(n => n.id === polygonEditNodeId);
+    if (node) {
+      node.x = minX; node.y = minY;
+      node.w = bw;   node.h = bh;
+      node.customPoints = customPoints;
+    }
+    selectedId = polygonEditNodeId;
+  } else {
+    const node = {
+      id: `n${nodeIdCounter++}`,
+      type: 'custom',
+      x: minX, y: minY,
+      w: bw, h: bh,
+      label: '',
+      color: '#000000',
+      customPoints,
+    };
+    nodes.push(node);
+    selectedId = node.id;
+    selectedIds.clear();
+    selectedIds.add(node.id);
+  }
+  updateStatus();
+  cancelPolygonDraw();
+  updateProps();
+}
+
+// Double-click to finish polygon
+svg.addEventListener('dblclick', e => {
+  if (!polygonDrawMode) return;
+  e.preventDefault(); e.stopPropagation();
+  // Remove the last point (it was added on the first click of the double-click)
+  if (polygonPoints.length > 0) polygonPoints.pop();
+  finalizePolygon();
+});
+
+// ============================================================
 // PROPERTIES PANEL
 // ============================================================
 function updateProps() {
@@ -1531,6 +1746,7 @@ function updateProps() {
     document.getElementById('propType').value = el.type;
     document.getElementById('propType').style.display = '';
     document.getElementById('propTextGroup').style.display = '';
+    document.getElementById('customPointsEditor').style.display = 'none';
 
     // Font controls — show for nodes only
     document.getElementById('propFontGroup').style.display = '';
@@ -1561,6 +1777,15 @@ function updateProps() {
       subprogram: 'h\u00a0=\u00a0a\u00a0·\u00a0b\u00a0=\u00a01.5a\u00a0·\u00a0полосы\u00a0=\u00a00.15a',
       comment:    'h\u00a0=\u00a0a',
     };
+    // Show "Edit points" button only for custom type
+    const editPolyBtn = document.getElementById('btnEditPolygon');
+    if (editPolyBtn) editPolyBtn.style.display = el.type === 'custom' ? '' : 'none';
+    // Show custom points editor only for custom type
+    const cpEditor = document.getElementById('customPointsEditor');
+    if (cpEditor) {
+      cpEditor.style.display = el.type === 'custom' ? '' : 'none';
+      if (el.type === 'custom') renderCustomPointsList(el);
+    }
     if (paramATypes.includes(el.type)) {
       paramAGroup.style.display = '';
       document.getElementById('propParamA').value = el.paramA || 80;
@@ -1588,7 +1813,10 @@ function updateProps() {
     document.getElementById('propFontGroup').style.display = 'none';
     document.getElementById('propFontStyleGroup').style.display = 'none';
     document.getElementById('gostFontHint').style.display = 'none';
+    document.getElementById('customPointsEditor').style.display = 'none';
     document.querySelectorAll('.color-swatch').forEach(sw => sw.classList.remove('active'));
+    const editPolyBtnElse = document.getElementById('btnEditPolygon');
+    if (editPolyBtnElse) editPolyBtnElse.style.display = 'none';
 
     // Show edge controls
     const isEdge = !!(edges.find(e => e.id === selectedId));
@@ -1814,6 +2042,12 @@ document.getElementById('btnDeleteSelected').addEventListener('click', () => {
   render(); updateProps(); updateStatus();
 });
 
+document.getElementById('btnEditPolygon').addEventListener('click', () => {
+  const node = nodes.find(n => n.id === selectedId && n.type === 'custom');
+  if (!node) return;
+  startPolygonDraw(node.id);
+});
+
 // Edge line style
 document.getElementById('propEdgeLineStyle').addEventListener('change', e => {
   const edge = edges.find(ed => ed.id === selectedId);
@@ -1843,6 +2077,27 @@ document.querySelectorAll('.palette-item').forEach(item => {
     e.dataTransfer.effectAllowed = 'copy';
   });
 });
+
+// Custom polygon palette button
+document.getElementById('paletteCustomShape').addEventListener('click', () => {
+  if (polygonDrawMode) { cancelPolygonDraw(); }
+  else { startPolygonDraw(null); }
+});
+
+// Keyboard: Escape cancels drawing, Enter finalizes
+document.addEventListener('keydown', e => {
+  if (polygonDrawMode) {
+    if (e.key === 'Escape') { cancelPolygonDraw(); e.preventDefault(); }
+    if (e.key === 'Enter') {
+      if (polygonPoints.length >= 3) finalizePolygon();
+      else cancelPolygonDraw();
+      e.preventDefault();
+    }
+    if (e.key === 'Backspace' && polygonPoints.length > 0) {
+      polygonPoints.pop(); render(); e.preventDefault();
+    }
+  }
+}, true);
 
 canvasWrap.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
 canvasWrap.addEventListener('drop', e => {
@@ -1887,6 +2142,19 @@ function isOverDeleteZone(clientX, clientY) {
 
 svg.addEventListener('mousemove', e => {
   const pt = svgPoint(e);
+
+  // Polygon drawing mode: track cursor
+  if (polygonDrawMode) {
+    let snapped = { x: pt.x, y: pt.y };
+    const SNAP_THRESHOLD = 12 / zoom;
+    polygonPoints.forEach(ep => {
+      if (Math.abs(pt.x - ep.x) < SNAP_THRESHOLD) snapped.x = ep.x;
+      if (Math.abs(pt.y - ep.y) < SNAP_THRESHOLD) snapped.y = ep.y;
+    });
+    polygonCursorPt = snapped;
+    render();
+    return;
+  }
 
   // Segment drag
   if (draggingSegment) {
@@ -1994,7 +2262,33 @@ svg.addEventListener('mousemove', e => {
 });
 
 svg.addEventListener('mousedown', e => {
-  if (e.button === 2) { isPanning = true; e.preventDefault(); return; }
+  if (e.button === 2) {
+    if (polygonDrawMode) { cancelPolygonDraw(); return; }
+    isPanning = true; e.preventDefault(); return;
+  }
+
+  // Polygon drawing mode: add point on left click
+  if (polygonDrawMode) {
+    e.preventDefault(); e.stopPropagation();
+    const pt = svgPoint(e);
+    // Snap to existing points
+    let snapped = { x: pt.x, y: pt.y };
+    const SNAP_THRESHOLD = 12 / zoom;
+    polygonPoints.forEach(ep => {
+      if (Math.abs(pt.x - ep.x) < SNAP_THRESHOLD) snapped.x = ep.x;
+      if (Math.abs(pt.y - ep.y) < SNAP_THRESHOLD) snapped.y = ep.y;
+    });
+    // If click is near first point and we have >=3 points, close the shape
+    if (polygonPoints.length >= 3) {
+      const first = polygonPoints[0];
+      const dist = Math.hypot((snapped.x - first.x)*zoom, (snapped.y - first.y)*zoom);
+      if (dist < 16) { finalizePolygon(); return; }
+    }
+    polygonPoints.push(snapped);
+    render();
+    return;
+  }
+
   const target = e.target;
 
   // Segment handle drag
@@ -3082,6 +3376,181 @@ document.getElementById('sheetRenameOk').addEventListener('click', () => {
 document.getElementById('sheetRenameInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('sheetRenameOk').click();
   if (e.key === 'Escape') document.getElementById('sheetRenameCancel').click();
+});
+
+// ============================================================
+// CUSTOM POINTS EDITOR (в панели свойств)
+// ============================================================
+let cpDragSrcIdx = null;
+
+function renderCustomPointsList(node) {
+  const list = document.getElementById('customPointsList');
+  if (!list || !node || !node.customPoints) return;
+  list.innerHTML = '';
+  const dark = document.documentElement.classList.contains('dark');
+
+  node.customPoints.forEach(([rx, ry], i) => {
+    const row = document.createElement('div');
+    row.dataset.idx = i;
+    row.style.cssText = `
+      display:flex;align-items:center;gap:4px;
+      padding:3px 4px;border-radius:5px;
+      border:1px solid ${dark?'#1e2540':'#dde1ec'};
+      background:${dark?'#131828':'#f5f7fb'};
+      cursor:default;
+      transition:background 0.12s;
+    `;
+    row.draggable = true;
+
+    // Drag handle
+    const handle = document.createElement('span');
+    handle.textContent = '⠿';
+    handle.style.cssText = 'font-size:11px;cursor:grab;opacity:0.5;flex-shrink:0;user-select:none;';
+    row.appendChild(handle);
+
+    // Index badge
+    const badge = document.createElement('span');
+    badge.textContent = (i + 1);
+    badge.style.cssText = `font-family:monospace;font-size:9px;color:#a78bfa;flex-shrink:0;width:14px;text-align:center;`;
+    row.appendChild(badge);
+
+    // X input
+    const xLabel = document.createElement('span');
+    xLabel.textContent = 'X';
+    xLabel.style.cssText = 'font-family:monospace;font-size:9px;opacity:0.5;flex-shrink:0;';
+    const xInput = document.createElement('input');
+    xInput.type = 'number';
+    xInput.step = '1';
+    xInput.value = Math.round(node.x + rx * node.w);
+    xInput.style.cssText = `
+      width:44px;font-family:monospace;font-size:10px;
+      background:${dark?'#0e1220':'#fff'};
+      border:1px solid ${dark?'#1e2540':'#dde1ec'};
+      color:${dark?'#e8eaf0':'#1a202c'};
+      border-radius:4px;padding:1px 4px;outline:none;text-align:center;
+    `;
+    xInput.addEventListener('focus', () => saveHistory());
+    xInput.addEventListener('change', () => {
+      const n = nodes.find(n=>n.id===selectedId);
+      if (!n || !n.customPoints) return;
+      const absX = parseFloat(xInput.value);
+      if (isNaN(absX)) return;
+      // Rebuild absolute points, change this one
+      const absPts = n.customPoints.map(([r,s]) => [n.x+r*n.w, n.y+s*n.h]);
+      absPts[i][0] = absX;
+      rebuildNodeFromAbsPoints(n, absPts);
+      render(); updateProps();
+    });
+
+    // Y input
+    const yLabel = document.createElement('span');
+    yLabel.textContent = 'Y';
+    yLabel.style.cssText = 'font-family:monospace;font-size:9px;opacity:0.5;flex-shrink:0;';
+    const yInput = document.createElement('input');
+    yInput.type = 'number';
+    yInput.step = '1';
+    yInput.value = Math.round(node.y + ry * node.h);
+    yInput.style.cssText = xInput.style.cssText;
+    yInput.addEventListener('focus', () => saveHistory());
+    yInput.addEventListener('change', () => {
+      const n = nodes.find(n=>n.id===selectedId);
+      if (!n || !n.customPoints) return;
+      const absY = parseFloat(yInput.value);
+      if (isNaN(absY)) return;
+      const absPts = n.customPoints.map(([r,s]) => [n.x+r*n.w, n.y+s*n.h]);
+      absPts[i][1] = absY;
+      rebuildNodeFromAbsPoints(n, absPts);
+      render(); updateProps();
+    });
+
+    // Delete button
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '✕';
+    delBtn.style.cssText = `
+      font-size:9px;cursor:pointer;flex-shrink:0;
+      background:transparent;border:none;
+      color:#ff6b6b;padding:0 2px;line-height:1;
+      opacity:0.7;
+    `;
+    delBtn.title = 'Удалить точку';
+    delBtn.addEventListener('click', () => {
+      const n = nodes.find(n=>n.id===selectedId);
+      if (!n || !n.customPoints || n.customPoints.length <= 3) return;
+      saveHistory();
+      const absPts = n.customPoints.map(([r,s]) => [n.x+r*n.w, n.y+s*n.h]);
+      absPts.splice(i, 1);
+      rebuildNodeFromAbsPoints(n, absPts);
+      render(); updateProps();
+    });
+    // Disable if only 3 points
+    if (node.customPoints.length <= 3) { delBtn.style.opacity = '0.2'; delBtn.disabled = true; }
+
+    row.appendChild(xLabel); row.appendChild(xInput);
+    row.appendChild(yLabel); row.appendChild(yInput);
+    row.appendChild(delBtn);
+
+    // Drag-and-drop reorder
+    row.addEventListener('dragstart', e => {
+      cpDragSrcIdx = i;
+      e.dataTransfer.effectAllowed = 'move';
+      row.style.opacity = '0.4';
+    });
+    row.addEventListener('dragend', () => {
+      row.style.opacity = '1';
+      cpDragSrcIdx = null;
+      document.querySelectorAll('#customPointsList > div').forEach(r => r.style.borderColor = '');
+    });
+    row.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      row.style.borderColor = '#a78bfa';
+    });
+    row.addEventListener('dragleave', () => {
+      row.style.borderColor = '';
+    });
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      row.style.borderColor = '';
+      if (cpDragSrcIdx === null || cpDragSrcIdx === i) return;
+      const n = nodes.find(n=>n.id===selectedId);
+      if (!n || !n.customPoints) return;
+      saveHistory();
+      const absPts = n.customPoints.map(([r,s]) => [n.x+r*n.w, n.y+s*n.h]);
+      const [moved] = absPts.splice(cpDragSrcIdx, 1);
+      absPts.splice(i, 0, moved);
+      rebuildNodeFromAbsPoints(n, absPts);
+      render(); updateProps();
+    });
+
+    list.appendChild(row);
+  });
+}
+
+function rebuildNodeFromAbsPoints(node, absPts) {
+  if (!absPts || absPts.length < 3) return;
+  const xs = absPts.map(p => p[0]);
+  const ys = absPts.map(p => p[1]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const bw = maxX - minX || 1;
+  const bh = maxY - minY || 1;
+  node.x = minX; node.y = minY;
+  node.w = bw;   node.h = bh;
+  node.customPoints = absPts.map(([ax,ay]) => [(ax-minX)/bw, (ay-minY)/bh]);
+}
+
+document.getElementById('btnAddCustomPoint').addEventListener('click', () => {
+  const node = nodes.find(n=>n.id===selectedId && n.type==='custom');
+  if (!node || !node.customPoints) return;
+  saveHistory();
+  // Add a new point at midpoint of last edge
+  const pts = node.customPoints;
+  const last = pts[pts.length - 1];
+  const first = pts[0];
+  const newRx = (last[0] + first[0]) / 2;
+  const newRy = (last[1] + first[1]) / 2;
+  node.customPoints = [...pts.slice(0, -1), [newRx, newRy], last];
+  render(); updateProps();
 });
 
 document.getElementById('btnAddSheet').addEventListener('click', addSheet);
