@@ -273,6 +273,9 @@
         <marker id="arrowhead-active" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
           <polygon points="0 0, 10 3.5, 0 7" fill="#4fffb0"/>
         </marker>
+        <marker id="arrowhead-gost" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#000000"/>
+        </marker>
         <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
           <feFlood flood-color="#4fffb0" flood-opacity="1" result="color"/>
           <feComposite in="color" in2="SourceGraphic" operator="in" result="coloredBlur"/>
@@ -359,6 +362,12 @@
           <div id="propParamAHint" class="mt-1 font-mono text-[9px] dark:text-gray-500 text-gray-400 leading-[1.7]"></div>
         </div>
 
+        <!-- Param A mismatch warning -->
+        <div id="propParamAWarn" style="display:none;background:rgba(251,191,36,0.10);border:1px solid rgba(251,191,36,0.4);color:#d97706;border-radius:6px;padding:6px 10px;font-family:monospace;font-size:9px;line-height:1.6;gap:6px;align-items:flex-start;">
+          <span style="flex-shrink:0;font-size:11px;">⚠</span>
+          <span id="propParamAWarnText"></span>
+        </div>
+
         <!-- Font Family -->
         <div id="propFontGroup">
           <label class="block text-[10px] font-semibold tracking-wide uppercase dark:text-gray-500 text-gray-400 mb-1">Шрифт</label>
@@ -396,6 +405,33 @@
           📐 ГОСТ: по умолчанию Times New Roman
         </div>
 
+        <!-- Edge: Line Style -->
+        <div id="propEdgeStyleGroup" style="display:none">
+          <label class="block text-[10px] font-semibold tracking-wide uppercase dark:text-gray-500 text-gray-400 mb-1">Тип линии</label>
+          <select id="propEdgeLineStyle"
+            class="w-full dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-800 px-2.5 py-1.5 rounded-md font-mono text-[11px] outline-none transition-colors focus:border-accent">
+            <option value="solid">——— Сплошная</option>
+            <option value="dashed">- - - Пунктирная</option>
+            <option value="chain">·—·— Штрихпунктир</option>
+          </select>
+          <div class="mt-1 font-mono text-[9px] dark:text-gray-500 text-gray-400 leading-relaxed">По ГОСТ 2.303-68</div>
+        </div>
+
+        <!-- Edge: Arrow End -->
+        <div id="propEdgeArrowGroup" style="display:none">
+          <label class="block text-[10px] font-semibold tracking-wide uppercase dark:text-gray-500 text-gray-400 mb-1">Законцовка</label>
+          <div class="flex gap-1.5">
+            <button id="edgeArrowNone" data-arrow="none"
+              class="edge-arrow-btn flex-1 py-1.5 rounded-md font-mono text-[11px] cursor-pointer transition-all border dark:border-dark-border border-light-border dark:text-gray-200 text-gray-700 dark:hover:border-accent hover:border-accent hover:text-accent text-center">
+              ——
+            </button>
+            <button id="edgeArrowEnd" data-arrow="end"
+              class="edge-arrow-btn flex-1 py-1.5 rounded-md font-mono text-[11px] cursor-pointer transition-all border dark:border-dark-border border-light-border dark:text-gray-200 text-gray-700 dark:hover:border-accent hover:border-accent hover:text-accent text-center">
+              →
+            </button>
+          </div>
+        </div>
+
         <!-- Delete -->
         <button id="btnDeleteSelected"
           class="mt-1 w-full py-1.5 bg-transparent border border-accent2 text-accent2 rounded-md cursor-pointer font-mono text-[11px] transition-all hover:bg-accent2 hover:text-white">
@@ -416,8 +452,21 @@
             onclick="setDiagramStyle('gost')">
             📐 ГОСТ
           </button>
-
         </div>
+      </div>
+
+      <!-- Глобальный параметр a -->
+      <div>
+        <div class="text-[9px] font-semibold tracking-widest uppercase dark:text-gray-500 text-gray-400 mb-2">Глобальный параметр <span class="text-accent font-mono">a</span></div>
+        <div class="flex gap-2 items-center">
+          <input type="number" id="globalParamAInput" min="20" max="600" step="1" value="80"
+            class="w-full dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-800 px-2.5 py-1.5 rounded-md font-mono text-[11px] outline-none transition-colors focus:border-accent text-center"/>
+        </div>
+        <div class="mt-1.5 font-mono text-[9px] dark:text-gray-500 text-gray-400 leading-relaxed">b&nbsp;=&nbsp;1.5a для всех фигур</div>
+        <button id="btnApplyGlobalA"
+          class="mt-2 w-full py-1.5 px-2 rounded-md font-mono text-[10px] font-semibold cursor-pointer transition-all border dark:border-dark-border border-light-border dark:text-gray-200 text-gray-700 dark:hover:border-accent hover:border-accent hover:text-accent">
+          Применить ко всем
+        </button>
       </div>
 
     </div>
@@ -518,6 +567,7 @@ themeToggle.addEventListener('change', () => applyTheme(themeToggle.checked));
 let nodes = [];
 let edges = [];
 let selectedId = null;       // single selected edge id
+let globalParamA = 80;       // global GOST parameter a for all blocks
 let selectedIds = new Set(); // multi-selected node ids
 let selectionRect = null;    // { x, y, w, h } in SVG coords while rubber-band dragging
 let selectionStart = null;   // SVG point where rubber-band started
@@ -1076,6 +1126,8 @@ function render() {
   // Update arrowhead colour for GOST
   const arrowEl = document.getElementById('arrowhead');
   if (arrowEl) arrowEl.querySelector('polygon').setAttribute('fill', isGost ? '#000000' : '#6b7280');
+  const arrowGostEl = document.getElementById('arrowhead-gost');
+  if (arrowGostEl) arrowGostEl.querySelector('polygon').setAttribute('fill', '#000000');
 
   // Draw edges
   edges.forEach(edge => {
@@ -1098,7 +1150,27 @@ function render() {
     el.setAttribute('fill', 'none');
     el.setAttribute('stroke', isSelected ? '#4fffb0' : edgeColor);
     el.setAttribute('stroke-width', isSelected ? '2.5' : '1.8');
-    el.setAttribute('marker-end', isSelected ? 'url(#arrowhead-active)' : 'url(#arrowhead)');
+
+    // Line style: solid / dashed / chain (штрихпунктир по ГОСТ 2.303-68)
+    const lineStyle = edge.lineStyle || 'solid';
+    if (lineStyle === 'dashed') {
+      el.setAttribute('stroke-dasharray', '8,5');
+    } else if (lineStyle === 'chain') {
+      // Штрихпунктир: штрих — три точки — штрих по ГОСТ 2.303-68
+      // dash, gap, dot, gap, dot, gap, dot, gap
+      el.setAttribute('stroke-dasharray', '12,3,2,3,2,3,2,3');
+    } else {
+      el.removeAttribute('stroke-dasharray');
+    }
+
+    // Arrow end: end (default) / none
+    const arrowEnd = edge.arrowEnd !== undefined ? edge.arrowEnd : 'end';
+    if (arrowEnd === 'end') {
+      el.setAttribute('marker-end', isSelected ? 'url(#arrowhead-active)' : (isGost ? 'url(#arrowhead-gost)' : 'url(#arrowhead)'));
+    } else {
+      el.removeAttribute('marker-end');
+    }
+
     el.setAttribute('pointer-events', 'none');
     el.style.cursor = 'pointer';
     el.dataset.id = edge.id;
@@ -1458,6 +1530,8 @@ function updateProps() {
   const isGost = diagramStyle === 'gost';
 
   if (el.type !== undefined && isNode) {
+    document.getElementById('propEdgeStyleGroup').style.display = 'none';
+    document.getElementById('propEdgeArrowGroup').style.display = 'none';
     document.getElementById('propText').value = el.label || '';
     document.getElementById('propType').value = el.type;
     document.getElementById('propType').style.display = '';
@@ -1496,8 +1570,11 @@ function updateProps() {
       paramAGroup.style.display = '';
       document.getElementById('propParamA').value = el.paramA || 80;
       paramAHint.textContent = paramAHints[el.type] || '';
+      updateParamAWarn(el, el.paramA || 80);
     } else {
       paramAGroup.style.display = 'none';
+      const warn = document.getElementById('propParamAWarn');
+      if (warn) warn.style.display = 'none';
     }
 
     document.getElementById('propFontFamily').value = el.fontFamily || defaultFamily;
@@ -1517,6 +1594,21 @@ function updateProps() {
     document.getElementById('propFontStyleGroup').style.display = 'none';
     document.getElementById('gostFontHint').style.display = 'none';
     document.querySelectorAll('.color-swatch').forEach(sw => sw.classList.remove('active'));
+
+    // Show edge controls
+    const isEdge = !!(edges.find(e => e.id === selectedId));
+    document.getElementById('propEdgeStyleGroup').style.display = isEdge ? '' : 'none';
+    document.getElementById('propEdgeArrowGroup').style.display = isEdge ? '' : 'none';
+    if (isEdge) {
+      const edge = edges.find(e => e.id === selectedId);
+      document.getElementById('propEdgeLineStyle').value = edge.lineStyle || 'solid';
+      const arrowEnd = edge.arrowEnd !== undefined ? edge.arrowEnd : 'end';
+      document.querySelectorAll('.edge-arrow-btn').forEach(btn => {
+        const isActive = btn.dataset.arrow === arrowEnd;
+        btn.style.borderColor = isActive ? '#4fffb0' : '';
+        btn.style.color = isActive ? '#4fffb0' : '';
+      });
+    }
   }
 }
 
@@ -1619,6 +1711,7 @@ document.getElementById('propParamA').addEventListener('input', e => {
   if (node && val >= 20 && val <= 600) {
     applyParamA(node, val);
     render();
+    updateParamAWarn(node, val);
   }
 });
 document.getElementById('propParamA').addEventListener('change', e => {
@@ -1628,8 +1721,35 @@ document.getElementById('propParamA').addEventListener('change', e => {
     saveHistory();
     applyParamA(node, val);
     render();
+    updateParamAWarn(node, val);
   }
 });
+
+// Global param A
+document.getElementById('globalParamAInput').addEventListener('change', e => {
+  const val = parseFloat(e.target.value);
+  if (val >= 20 && val <= 600) globalParamA = val;
+});
+document.getElementById('btnApplyGlobalA').addEventListener('click', () => {
+  const val = parseFloat(document.getElementById('globalParamAInput').value);
+  if (val < 20 || val > 600) return;
+  saveHistory();
+  globalParamA = val;
+  nodes.forEach(n => { if (n.paramA !== undefined) applyParamA(n, val); });
+  render(); updateProps();
+});
+
+function updateParamAWarn(node, val) {
+  const warn = document.getElementById('propParamAWarn');
+  const warnText = document.getElementById('propParamAWarnText');
+  if (!warn) return;
+  if (node.paramA !== undefined && Math.round(node.paramA) !== Math.round(globalParamA)) {
+    warn.style.display = 'flex';
+    warnText.textContent = `Не соответствует глобальному a\u00a0=\u00a0${Math.round(globalParamA)}`;
+  } else {
+    warn.style.display = 'none';
+  }
+}
 document.querySelectorAll('.color-swatch').forEach(sw => {
   sw.addEventListener('click', () => {
     const node = nodes.find(n=>n.id===selectedId);
@@ -1643,6 +1763,24 @@ document.getElementById('btnDeleteSelected').addEventListener('click', () => {
   edges = edges.filter(e => e.from !== selectedId && e.to !== selectedId && e.id !== selectedId);
   selectedId = null;
   render(); updateProps(); updateStatus();
+});
+
+// Edge line style
+document.getElementById('propEdgeLineStyle').addEventListener('change', e => {
+  const edge = edges.find(ed => ed.id === selectedId);
+  if (edge) { saveHistory(); edge.lineStyle = e.target.value; render(); }
+});
+
+// Edge arrow end buttons
+document.querySelectorAll('.edge-arrow-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const edge = edges.find(ed => ed.id === selectedId);
+    if (edge) {
+      saveHistory();
+      edge.arrowEnd = btn.dataset.arrow;
+      render(); updateProps();
+    }
+  });
 });
 
 // ============================================================
