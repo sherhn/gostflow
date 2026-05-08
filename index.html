@@ -1707,17 +1707,29 @@ function applyParamA(node, val) {
 }
 document.getElementById('propParamA').addEventListener('input', e => {
   const node = nodes.find(n => n.id === selectedId);
-  const val = parseFloat(e.target.value);
-  if (node && val >= 20 && val <= 600) {
-    applyParamA(node, val);
+  const raw = parseFloat(e.target.value);
+  if (isNaN(raw)) return;
+  if (raw < PARAM_A_MIN || raw > PARAM_A_MAX) {
+    e.target.style.borderColor = '#ff6b6b';
+    return;
+  }
+  e.target.style.borderColor = '';
+  if (node) {
+    applyParamA(node, raw);
     render();
-    updateParamAWarn(node, val);
+    updateParamAWarn(node, raw);
   }
 });
 document.getElementById('propParamA').addEventListener('change', e => {
   const node = nodes.find(n => n.id === selectedId);
-  const val = parseFloat(e.target.value);
-  if (node && val >= 20 && val <= 600) {
+  let val = parseFloat(e.target.value);
+  if (isNaN(val)) { e.target.value = node ? (node.paramA || 80) : 80; return; }
+  if (val < PARAM_A_MIN || val > PARAM_A_MAX) {
+    val = clampParamA(val);
+    e.target.value = val;
+  }
+  e.target.style.borderColor = '';
+  if (node) {
     saveHistory();
     applyParamA(node, val);
     render();
@@ -1726,13 +1738,55 @@ document.getElementById('propParamA').addEventListener('change', e => {
 });
 
 // Global param A
+const PARAM_A_MIN = 20;
+const PARAM_A_MAX = 600;
+
+function clampParamA(val) {
+  return Math.min(PARAM_A_MAX, Math.max(PARAM_A_MIN, val));
+}
+
+function showParamAError(inputEl, msg) {
+  let errEl = document.getElementById('globalParamAError');
+  if (!errEl) {
+    errEl = document.createElement('div');
+    errEl.id = 'globalParamAError';
+    errEl.style.cssText = 'color:#ff6b6b;font-family:monospace;font-size:9px;margin-top:4px;';
+    inputEl.parentElement.insertAdjacentElement('afterend', errEl);
+  }
+  errEl.textContent = msg;
+  inputEl.style.borderColor = '#ff6b6b';
+  setTimeout(() => {
+    errEl.textContent = '';
+    inputEl.style.borderColor = '';
+  }, 2000);
+}
+
+document.getElementById('globalParamAInput').addEventListener('input', e => {
+  const raw = parseFloat(e.target.value);
+  if (isNaN(raw)) return;
+  if (raw < PARAM_A_MIN || raw > PARAM_A_MAX) {
+    showParamAError(e.target, `a должно быть от ${PARAM_A_MIN} до ${PARAM_A_MAX}`);
+  }
+});
 document.getElementById('globalParamAInput').addEventListener('change', e => {
-  const val = parseFloat(e.target.value);
-  if (val >= 20 && val <= 600) globalParamA = val;
+  let val = parseFloat(e.target.value);
+  if (isNaN(val)) { e.target.value = globalParamA; return; }
+  if (val < PARAM_A_MIN || val > PARAM_A_MAX) {
+    showParamAError(e.target, `a должно быть от ${PARAM_A_MIN} до ${PARAM_A_MAX}`);
+    val = clampParamA(val);
+    e.target.value = val;
+  }
+  globalParamA = val;
 });
 document.getElementById('btnApplyGlobalA').addEventListener('click', () => {
-  const val = parseFloat(document.getElementById('globalParamAInput').value);
-  if (val < 20 || val > 600) return;
+  const input = document.getElementById('globalParamAInput');
+  let val = parseFloat(input.value);
+  if (isNaN(val)) { input.value = globalParamA; return; }
+  if (val < PARAM_A_MIN || val > PARAM_A_MAX) {
+    showParamAError(input, `a должно быть от ${PARAM_A_MIN} до ${PARAM_A_MAX}`);
+    val = clampParamA(val);
+    input.value = val;
+  }
   saveHistory();
   globalParamA = val;
   nodes.forEach(n => { if (n.paramA !== undefined) applyParamA(n, val); });
