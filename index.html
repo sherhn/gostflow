@@ -241,6 +241,9 @@
         • Hover → порт → стрелка<br>
         • 🟡 порт — перенаправить<br>
         • Del — удалить<br>
+        • Ctrl+C/X/V — копировать<br>
+        • Ctrl+D — дублировать<br>
+        • ПКМ — контекст. меню<br>
         • Колесо — масштаб<br>
         • ПКМ+тащи — панорама<br>
         • Ctrl+Z/Y — история
@@ -572,6 +575,8 @@ let edgeStyle = "orthogonal"; // orthogonal | curved
 let diagramStyle = "gost";   // gost | strict | smooth
 // Segment dragging state
 let draggingSegment = null; // { edgeId, segIndex, axis }
+// Clipboard
+let clipboard = null; // { nodes: [...], edges: [...] }
 
 // ============================================================
 // TAB SWITCHING
@@ -2185,8 +2190,6 @@ svg.addEventListener('mouseup', e => {
   }
 });
 
-svg.addEventListener('contextmenu', e => e.preventDefault());
-
 // ============================================================
 // INLINE TEXT EDITING ON DOUBLE-CLICK
 // ============================================================
@@ -2291,6 +2294,280 @@ canvasWrap.addEventListener('wheel', e => {
 }, { passive: false });
 
 // ============================================================
+// COPY / PASTE / DUPLICATE
+// ============================================================
+function getSelectedNodeIds() {
+  const ids = new Set();
+  if (selectedIds.size > 0) selectedIds.forEach(id => ids.add(id));
+  else if (selectedId && nodes.find(n => n.id === selectedId)) ids.add(selectedId);
+  return ids;
+}
+
+function copySelected() {
+  const ids = getSelectedNodeIds();
+  if (!ids.size) return;
+  const copiedNodes = nodes.filter(n => ids.has(n.id)).map(n => JSON.parse(JSON.stringify(n)));
+  const copiedEdges = edges.filter(ed => ids.has(ed.from) && ids.has(ed.to)).map(ed => JSON.parse(JSON.stringify(ed)));
+  clipboard = { nodes: copiedNodes, edges: copiedEdges };
+  showToast(`Скопировано: ${copiedNodes.length} блок(ов)`);
+}
+
+function cutSelected() {
+  const ids = getSelectedNodeIds();
+  if (!ids.size) return;
+  const copiedNodes = nodes.filter(n => ids.has(n.id)).map(n => JSON.parse(JSON.stringify(n)));
+  const copiedEdges = edges.filter(ed => ids.has(ed.from) && ids.has(ed.to)).map(ed => JSON.parse(JSON.stringify(ed)));
+  clipboard = { nodes: copiedNodes, edges: copiedEdges };
+  saveHistory();
+  nodes = nodes.filter(n => !ids.has(n.id));
+  edges = edges.filter(ed => !ids.has(ed.from) && !ids.has(ed.to));
+  selectedId = null; selectedIds.clear();
+  render(); updateProps(); updateStatus();
+  showToast(`Вырезано: ${copiedNodes.length} блок(ов)`);
+}
+
+function pasteClipboard(offsetX = 24, offsetY = 24) {
+  if (!clipboard || !clipboard.nodes.length) return;
+  saveHistory();
+  const idMap = {};
+  const newNodes = clipboard.nodes.map(n => {
+    const newId = `n${nodeIdCounter++}`;
+    idMap[n.id] = newId;
+    return { ...JSON.parse(JSON.stringify(n)), id: newId, x: n.x + offsetX, y: n.y + offsetY };
+  });
+  const newEdges = clipboard.edges.map(ed => ({
+    ...JSON.parse(JSON.stringify(ed)),
+    id: `e${edgeIdCounter++}`,
+    from: idMap[ed.from] || ed.from,
+    to: idMap[ed.to] || ed.to,
+    segOffsets: {},
+  }));
+  nodes.push(...newNodes);
+  edges.push(...newEdges);
+  selectedIds.clear();
+  selectedId = null;
+  if (newNodes.length === 1) {
+    selectedId = newNodes[0].id;
+  } else {
+    newNodes.forEach(n => selectedIds.add(n.id));
+  }
+  render(); updateProps(); updateStatus();
+  showToast(`Вставлено: ${newNodes.length} блок(ов)`);
+}
+
+function duplicateSelected() {
+  const ids = getSelectedNodeIds();
+  if (!ids.size) return;
+  saveHistory();
+  const idMap = {};
+  const dupNodes = nodes.filter(n => ids.has(n.id)).map(n => {
+    const newId = `n${nodeIdCounter++}`;
+    idMap[n.id] = newId;
+    return { ...JSON.parse(JSON.stringify(n)), id: newId, x: n.x + 24, y: n.y + 24 };
+  });
+  const dupEdges = edges.filter(ed => ids.has(ed.from) && ids.has(ed.to)).map(ed => ({
+    ...JSON.parse(JSON.stringify(ed)),
+    id: `e${edgeIdCounter++}`,
+    from: idMap[ed.from],
+    to: idMap[ed.to],
+    segOffsets: {},
+  }));
+  nodes.push(...dupNodes);
+  edges.push(...dupEdges);
+  selectedIds.clear();
+  selectedId = null;
+  if (dupNodes.length === 1) {
+    selectedId = dupNodes[0].id;
+  } else {
+    dupNodes.forEach(n => selectedIds.add(n.id));
+  }
+  render(); updateProps(); updateStatus();
+  showToast(`Дублировано: ${dupNodes.length} блок(ов)`);
+}
+
+// ============================================================
+// TOAST NOTIFICATION
+// ============================================================
+function showToast(msg) {
+  let toast = document.getElementById('gfToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'gfToast';
+    const dark = document.documentElement.classList.contains('dark');
+    toast.style.cssText = `
+      position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9999;
+      padding:7px 18px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:11px;
+      pointer-events:none;transition:opacity 0.3s;
+    `;
+    document.body.appendChild(toast);
+  }
+  const dark = document.documentElement.classList.contains('dark');
+  toast.style.background = dark ? '#1e2540' : '#ffffff';
+  toast.style.border = `1px solid ${dark ? '#4fffb0' : '#34d399'}`;
+  toast.style.color = dark ? '#4fffb0' : '#059669';
+  toast.style.boxShadow = '0 4px 16px rgba(0,0,0,0.25)';
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  clearTimeout(toast._timeout);
+  toast._timeout = setTimeout(() => { toast.style.opacity = '0'; }, 1800);
+}
+
+// ============================================================
+// CONTEXT MENU (RIGHT-CLICK ON CANVAS)
+// ============================================================
+let _ctxMenu = null;
+function removeContextMenu() {
+  if (_ctxMenu) { _ctxMenu.remove(); _ctxMenu = null; }
+}
+
+function showContextMenu(e, nodeId) {
+  removeContextMenu();
+  e.preventDefault();
+  const dark = document.documentElement.classList.contains('dark');
+  const hasSelection = nodeId || selectedIds.size > 0;
+  const hasClipboard = clipboard && clipboard.nodes.length > 0;
+
+  // Ensure clicked node is selected
+  if (nodeId && !selectedIds.has(nodeId) && selectedId !== nodeId) {
+    selectedId = nodeId;
+    selectedIds.clear();
+    render(); updateProps();
+  }
+
+  const menu = document.createElement('div');
+  menu.id = 'gfCtxMenu';
+  menu.style.cssText = `
+    position:fixed;left:${e.clientX}px;top:${e.clientY}px;z-index:4000;
+    min-width:190px;border-radius:10px;overflow:hidden;
+    background:${dark ? '#131828' : '#ffffff'};
+    border:1px solid ${dark ? '#1e2540' : '#dde1ec'};
+    box-shadow:0 12px 32px rgba(0,0,0,0.4);
+    font-family:'JetBrains Mono',monospace;font-size:11px;
+    padding:4px 0;
+  `;
+
+  const sep = () => {
+    const d = document.createElement('div');
+    d.style.cssText = `height:1px;margin:3px 0;background:${dark ? '#1e2540' : '#dde1ec'};`;
+    menu.appendChild(d);
+  };
+
+  const item = (icon, label, shortcut, action, danger = false, disabled = false) => {
+    const el = document.createElement('div');
+    el.style.cssText = `
+      display:flex;align-items:center;justify-content:space-between;
+      padding:7px 14px;cursor:${disabled ? 'not-allowed' : 'pointer'};
+      color:${disabled ? (dark ? '#3a4260' : '#c0c7d4') : danger ? '#ff6b6b' : (dark ? '#e8eaf0' : '#1a202c')};
+      transition:background 0.1s;gap:12px;
+    `;
+    const left = document.createElement('span');
+    left.style.cssText = 'display:flex;align-items:center;gap:7px;';
+    left.innerHTML = `<span style="width:14px;text-align:center;opacity:${disabled?0.35:0.85}">${icon}</span><span>${label}</span>`;
+    el.appendChild(left);
+    if (shortcut) {
+      const sh = document.createElement('span');
+      sh.style.cssText = `font-size:9px;color:${disabled ? (dark?'#2a3050':'#d0d5e0') : (dark?'#4b5563':'#9ca3af')};white-space:nowrap;`;
+      sh.textContent = shortcut;
+      el.appendChild(sh);
+    }
+    if (!disabled) {
+      el.addEventListener('mouseenter', () => el.style.background = dark ? '#1e2540' : '#f0f2f7');
+      el.addEventListener('mouseleave', () => el.style.background = 'transparent');
+      el.addEventListener('click', () => { removeContextMenu(); action(); });
+    }
+    menu.appendChild(el);
+  };
+
+  if (hasSelection) {
+    item('⧉', 'Копировать', 'Ctrl+C', copySelected);
+    item('✂', 'Вырезать', 'Ctrl+X', cutSelected);
+  }
+  item('⎘', 'Вставить', 'Ctrl+V', () => {
+    // Paste near cursor
+    const rect = svg.getBoundingClientRect();
+    if (clipboard && clipboard.nodes.length) {
+      const minX = Math.min(...clipboard.nodes.map(n => n.x));
+      const minY = Math.min(...clipboard.nodes.map(n => n.y));
+      const curX = (e.clientX - rect.left - pan.x) / zoom;
+      const curY = (e.clientY - rect.top  - pan.y) / zoom;
+      const ox = curX - minX;
+      const oy = curY - minY;
+      pasteClipboard(ox, oy);
+    }
+  }, false, !hasClipboard);
+
+  if (hasSelection) {
+    item('⊞', 'Дублировать', 'Ctrl+D', duplicateSelected);
+    sep();
+    const selCount = selectedIds.size || (selectedId ? 1 : 0);
+    item('🗑', 'Удалить', 'Del', () => {
+      saveHistory();
+      const ids = getSelectedNodeIds();
+      nodes = nodes.filter(n => !ids.has(n.id));
+      edges = edges.filter(ed => !ids.has(ed.from) && !ids.has(ed.to) && !ids.has(ed.id));
+      selectedId = null; selectedIds.clear();
+      render(); updateProps(); updateStatus();
+    }, true);
+  }
+
+  if (hasSelection) {
+    sep();
+    item('⬆', 'На передний план', '', () => {
+      const ids = getSelectedNodeIds();
+      const toMove = nodes.filter(n => ids.has(n.id));
+      nodes = [...nodes.filter(n => !ids.has(n.id)), ...toMove];
+      render();
+    });
+    item('⬇', 'На задний план', '', () => {
+      const ids = getSelectedNodeIds();
+      const toMove = nodes.filter(n => ids.has(n.id));
+      nodes = [...toMove, ...nodes.filter(n => !ids.has(n.id))];
+      render();
+    });
+  }
+
+  sep();
+  item('⊡', 'Вписать в экран', 'F', () => document.getElementById('btnFit').click());
+  item('↩', 'Отмена', 'Ctrl+Z', undo);
+
+  document.body.appendChild(menu);
+  _ctxMenu = menu;
+
+  // Flip menu if it goes off screen
+  const mRect = menu.getBoundingClientRect();
+  if (mRect.right > window.innerWidth) menu.style.left = (e.clientX - mRect.width) + 'px';
+  if (mRect.bottom > window.innerHeight) menu.style.top = (e.clientY - mRect.height) + 'px';
+
+  // Close on outside click or Escape — use named refs so contextmenu events aren't swallowed
+  function onOutsideClick(ev) {
+    if (_ctxMenu && !_ctxMenu.contains(ev.target)) {
+      removeContextMenu();
+      document.removeEventListener('click', onOutsideClick, true);
+      document.removeEventListener('keydown', onEscKey, true);
+    }
+  }
+  function onEscKey(ev) {
+    if (ev.key === 'Escape') {
+      removeContextMenu();
+      document.removeEventListener('click', onOutsideClick, true);
+      document.removeEventListener('keydown', onEscKey, true);
+    }
+  }
+  setTimeout(() => {
+    document.addEventListener('click', onOutsideClick, true);
+    document.addEventListener('keydown', onEscKey, true);
+  }, 0);
+}
+
+// Wire up context menu on canvas
+svg.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  const nodeGrp = e.target.closest('[data-kind="node"]');
+  const nodeId = nodeGrp ? nodeGrp.dataset.id : null;
+  showContextMenu(e, nodeId);
+});
+
+// ============================================================
 // KEYBOARD
 // ============================================================
 document.addEventListener('keydown', e => {
@@ -2304,6 +2581,24 @@ document.addEventListener('keydown', e => {
   }
   if (e.ctrlKey && (e.key === 'y' || e.key === 'Y')) {
     if (!isEditing) { e.preventDefault(); e.stopPropagation(); redo(); }
+    return;
+  }
+
+  // Copy / Cut / Paste / Duplicate
+  if (e.ctrlKey && e.key === 'c') {
+    if (!isEditing) { e.preventDefault(); copySelected(); }
+    return;
+  }
+  if (e.ctrlKey && e.key === 'x') {
+    if (!isEditing) { e.preventDefault(); cutSelected(); }
+    return;
+  }
+  if (e.ctrlKey && e.key === 'v') {
+    if (!isEditing) { e.preventDefault(); pasteClipboard(24, 24); }
+    return;
+  }
+  if (e.ctrlKey && e.key === 'd') {
+    if (!isEditing) { e.preventDefault(); duplicateSelected(); }
     return;
   }
 
