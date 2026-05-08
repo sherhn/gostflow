@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru" class="dark">
+<html lang="ru">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -22,9 +22,9 @@
           accent3: '#6b8aff',
           dark: {
             bg:      '#0d0f14',
-            surface: '#151820',
-            panel:   '#1a1e28',
-            border:  '#252a38',
+            surface: '#0e1220',
+            panel:   '#131828',
+            border:  '#1e2540',
           },
           light: {
             bg:      '#f0f2f7',
@@ -40,8 +40,8 @@
 <style>
   body { font-family: 'Syne', sans-serif; }
   .canvas-dots-dark {
-    background-color: #0d0f14;
-    background-image: radial-gradient(circle, #252a38 1px, transparent 1px);
+    background-color: #080a0f;
+    background-image: radial-gradient(circle, #1c2030 1px, transparent 1px);
     background-size: 24px 24px;
   }
   .canvas-dots-light {
@@ -52,6 +52,11 @@
   .canvas-dots-gost {
     background-color: #f5f5f0;
     background-image: radial-gradient(circle, #c8c8c0 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  .canvas-dots-gost-dark {
+    background-color: #252830;
+    background-image: radial-gradient(circle, #363a46 1px, transparent 1px);
     background-size: 24px 24px;
   }
   .color-swatch.active { border-color: #fff !important; }
@@ -82,33 +87,13 @@
   .dark ::-webkit-scrollbar-thumb { background: #374151; }
   .light ::-webkit-scrollbar-thumb { background: #cbd5e1; }
 
-  select option { background: #1a1e28; color: #e8eaf0; }
-  .dark select option { background: #1a1e28; color: #e8eaf0; }
+  select option { background: #131828; color: #e8eaf0; }
+  .dark select option { background: #131828; color: #e8eaf0; }
   html:not(.dark) select option { background: #f5f7fb; color: #1a202c; }
   select:disabled, input:disabled {
     opacity: 0.45;
     cursor: not-allowed;
   }
-  #inlineEditor {
-    pointer-events: auto;
-  }
-  #inlineEditorText {
-    caret-color: #000;
-    border: none;
-    outline: none;
-    background: transparent;
-    padding: 0;
-  }
-  #inlineEditorText:focus {
-    outline: none;
-  }
-  /* Shape node editing: subtle underline cursor only, no box */
-  #inlineEditorText.shape-edit {
-    caret-color: #4fffb0;
-    border-bottom: 1.5px solid rgba(79,255,176,0.6);
-    padding-bottom: 1px;
-  }
-
   /* Prevent browser text selection during drag/rubber-band */
   #canvas, #canvasWrap {
     user-select: none;
@@ -138,7 +123,7 @@
     <div class="flex items-center gap-1.5 ml-1">
       <span class="text-xs dark:text-gray-500 text-gray-400 select-none">☀</span>
       <label class="theme-toggle">
-        <input type="checkbox" id="themeToggle" checked>
+        <input type="checkbox" id="themeToggle">
         <div class="theme-toggle-track">
           <div class="theme-toggle-thumb" id="themeThumb">🌙</div>
         </div>
@@ -251,7 +236,7 @@
       <div class="text-[9px] font-semibold tracking-widest uppercase dark:text-gray-500 text-gray-400 mb-2">Подсказки</div>
       <div class="font-mono text-[10px] dark:text-gray-500 text-gray-400 leading-[1.8]">
         • Перетащи фигуру<br>
-        • Двойной клик — текст<br>
+        • Двойной клик — выбор<br>
         • Клик — выбор<br>
         • Hover → порт → стрелка<br>
         • 🟡 порт — перенаправить<br>
@@ -294,11 +279,6 @@
     </div>
 
     <canvas id="minimap" width="140" height="90" class="absolute bottom-2 right-2 rounded-md opacity-85 dark:border-dark-border border-light-border border dark:bg-dark-surface bg-light-surface"></canvas>
-    <!-- Inline text editor overlay -->
-    <div id="inlineEditor" style="display:none;position:absolute;z-index:200;pointer-events:auto;">
-      <div id="inlineEditorText" contenteditable="true"
-        style="outline:none;min-width:40px;min-height:16px;text-align:center;white-space:pre;border:none;background:transparent;padding:2px 4px;line-height:1.3;cursor:text;"></div>
-    </div>
   </div>
 
   <!-- PROPS PANEL -->
@@ -537,9 +517,9 @@ const canvasWrap = document.getElementById('canvasWrap');
 function applyCanvasTheme() {
   const isGost = diagramStyle === 'gost';
   const dark = document.documentElement.classList.contains('dark');
-  canvasWrap.classList.remove('canvas-dots-dark', 'canvas-dots-light', 'canvas-dots-gost');
+  canvasWrap.classList.remove('canvas-dots-dark', 'canvas-dots-light', 'canvas-dots-gost', 'canvas-dots-gost-dark');
   if (isGost) {
-    canvasWrap.classList.add('canvas-dots-gost');
+    canvasWrap.classList.add(dark ? 'canvas-dots-gost-dark' : 'canvas-dots-gost');
   } else if (dark) {
     canvasWrap.classList.add('canvas-dots-dark');
   } else {
@@ -559,7 +539,10 @@ function applyTheme(dark) {
   updateMinimap();
 }
 
-themeToggle.addEventListener('change', () => applyTheme(themeToggle.checked));
+themeToggle.addEventListener('change', () => {
+  applyTheme(themeToggle.checked);
+  try { localStorage.setItem('gostflow-theme', themeToggle.checked ? 'dark' : 'light'); } catch(e) {}
+});
 
 // ============================================================
 // STATE
@@ -652,7 +635,11 @@ const tooltip = document.getElementById('tooltip');
 const minimap = document.getElementById('minimap');
 const mmCtx = minimap.getContext('2d');
 
-applyTheme(true); // start dark — called here so mmCtx is already initialized
+// Restore theme from localStorage, default = light
+const savedTheme = (() => { try { return localStorage.getItem('gostflow-theme'); } catch(e) { return null; } })();
+const startDark = savedTheme === 'dark';
+themeToggle.checked = startDark;
+applyTheme(startDark); // called here so mmCtx is already initialized
 // Apply default GOST style (buttons are in DOM by now)
 
 // ============================================================
@@ -1115,7 +1102,7 @@ function render() {
   const isGost = diagramStyle === 'gost';
 
   const edgeColor = isGost ? '#000000' : (isDark() ? '#4b5563' : '#94a3b8');
-  const labelBg   = isGost ? '#ffffff'  : (isDark() ? '#1a1e28' : '#ffffff');
+  const labelBg   = isGost ? '#ffffff'  : (isDark() ? '#131828' : '#ffffff');
   const labelFg   = isGost ? '#000000'  : (isDark() ? '#9ca3af' : '#6b7280');
   const nodeFills = isGost
     ? { text:'transparent', start:'#ffffff', process:'#ffffff', decision:'#ffffff', io:'#ffffff', connector:'#ffffff', for:'#ffffff', subprogram:'#ffffff', database:'#ffffff', document:'#ffffff', manual:'#ffffff', comment:'#ffffff' }
@@ -1343,10 +1330,7 @@ function render() {
     grp.appendChild(bodyShape);
 
     // Text — font properties (GOST overrides to Times New Roman at standard sizes)
-    // Skip text rendering while inline-editing this node (editor overlay is shown instead)
-    if (inlineEditingNodeId === node.id) {
-      // Still render ports etc, just skip the text
-    } else {
+    {
     const textLines = (node.label || '').split('\n');
     const isTextNode = node.type === 'text';
     const textY = isTextNode ? node.y + (node.fontSize || 14) : node.y + node.h/2;
@@ -1395,9 +1379,10 @@ function render() {
       pc.setAttribute('cx', port.px);
       pc.setAttribute('cy', port.py);
       pc.setAttribute('r', isHovPort ? 7 : 5);
-      pc.setAttribute('fill', isHovPort ? '#4fffb0' : 'transparent');
-      pc.setAttribute('stroke', '#4fffb0');
-      pc.setAttribute('stroke-width', '1.5');
+      const portColor = isDark() ? '#4fffb0' : '#00c070';
+      pc.setAttribute('fill', isHovPort ? portColor : 'transparent');
+      pc.setAttribute('stroke', portColor);
+      pc.setAttribute('stroke-width', isDark() ? '1.5' : '2');
       pc.setAttribute('opacity', showPorts ? '1' : '0');
       pc.style.cursor = 'crosshair';
       pc.dataset.kind = 'port';
@@ -1483,7 +1468,7 @@ function updateStatus() {
 function updateMinimap() {
   const ctx = mmCtx;
   ctx.clearRect(0,0,140,90);
-  ctx.fillStyle = diagramStyle === 'gost' ? '#f5f5f0' : (isDark() ? '#0d0f14' : '#f0f2f7');
+  ctx.fillStyle = diagramStyle === 'gost' ? (isDark() ? '#252830' : '#f5f5f0') : (isDark() ? '#0d0f14' : '#f0f2f7');
   ctx.fillRect(0,0,140,90);
   if (!nodes.length) return;
   const xs = nodes.map(n => [n.x, n.x+n.w]).flat();
@@ -1497,7 +1482,7 @@ function updateMinimap() {
     const src = nodes.find(n=>n.id===edge.from);
     const dst = nodes.find(n=>n.id===edge.to);
     if (!src||!dst) return;
-    ctx.strokeStyle = diagramStyle === 'gost' ? '#333333' : (isDark() ? '#4b5563' : '#94a3b8');
+    ctx.strokeStyle = isDark() ? '#aaaaaa' : (diagramStyle === 'gost' ? '#333333' : '#94a3b8');
     ctx.lineWidth = 0.8;
     ctx.beginPath();
     ctx.moveTo(ox+(src.x+src.w/2-minX+30)*s, oy+(src.y+src.h/2-minY+30)*s);
@@ -1507,8 +1492,10 @@ function updateMinimap() {
   nodes.forEach(node => {
     const nx = ox+(node.x-minX+30)*s, ny = oy+(node.y-minY+30)*s;
     const nw = node.w*s, nh = node.h*s;
-    ctx.fillStyle = node.id===selectedId ? '#4fffb0' : node.color+'55';
-    ctx.strokeStyle = node.color;
+    const dark = isDark();
+    const shapeColor = dark ? '#ffffff' : node.color;
+    ctx.fillStyle = node.id===selectedId ? '#4fffb0' : (dark ? 'rgba(255,255,255,0.12)' : node.color+'55');
+    ctx.strokeStyle = shapeColor;
     ctx.lineWidth = 0.8;
     ctx.beginPath();
     ctx.rect(nx, ny, nw, nh);
@@ -1999,19 +1986,6 @@ svg.addEventListener('mousemove', e => {
 });
 
 svg.addEventListener('mousedown', e => {
-  // Close inline editor only if clicking outside the editor itself
-  if (inlineEditingNodeId) {
-    // dblclick fires two mousedowns before dblclick event — check if we're clicking the editing node
-    const pt0 = svgPoint(e);
-    const editNode = nodes.find(n => n.id === inlineEditingNodeId);
-    const clickedSameNode = editNode &&
-      pt0.x >= editNode.x && pt0.x <= editNode.x + editNode.w &&
-      pt0.y >= editNode.y && pt0.y <= editNode.y + editNode.h;
-    if (!clickedSameNode) {
-      commitInlineEditor();
-    }
-    // Don't return — allow normal selection to proceed
-  }
   if (e.button === 2) { isPanning = true; e.preventDefault(); return; }
   const target = e.target;
 
@@ -2216,122 +2190,6 @@ svg.addEventListener('contextmenu', e => e.preventDefault());
 // ============================================================
 // INLINE TEXT EDITING ON DOUBLE-CLICK
 // ============================================================
-let inlineEditingNodeId = null;
-let inlineEditingIsNew = false; // true if node was just created (delete on empty commit/cancel)
-const inlineEditor = document.getElementById('inlineEditor');
-const inlineEditorText = document.getElementById('inlineEditorText');
-
-function getNodeFontProps(node) {
-  const isGost = diagramStyle === 'gost';
-  const fam = node.fontFamily || (isGost ? 'Times New Roman' : (node.type === 'text' ? 'Times New Roman' : 'JetBrains Mono'));
-  const famCss = fam + ((fam === 'JetBrains Mono' || fam === 'Courier New') ? ',monospace' : (fam === 'Times New Roman' || fam === 'Georgia') ? ',serif' : ',sans-serif');
-  const gostSizes = { text: 14, start:12, connector:10, decision:12, io:12, for:12, subprogram:12, database:12, document:12, manual:12, comment:11, process:12 };
-  const defaultSize = isGost ? (gostSizes[node.type]||12) : (node.type === 'connector' ? 10 : node.type === 'text' ? 14 : 12);
-  return {
-    family: famCss,
-    size: node.fontSize || defaultSize,
-    style: node.fontStyle || 'normal',
-    weight: node.fontWeight || (node.type === 'text' ? '400' : (isGost ? '400' : '600')),
-  };
-}
-
-function openInlineEditor(node, isNew) {
-  inlineEditingNodeId = node.id;
-  inlineEditingIsNew = !!isNew;
-  selectedId = node.id;
-
-  const fp = getNodeFontProps(node);
-  const scaledFontSize = fp.size * zoom;
-  const isTextNode = node.type === 'text';
-
-  let editorX, editorY, transformStyle;
-  if (isTextNode) {
-    editorX = node.x * zoom + pan.x;
-    editorY = node.y * zoom + pan.y;
-    transformStyle = 'none';
-  } else {
-    editorX = node.x * zoom + pan.x + (node.w * zoom) / 2;
-    editorY = node.y * zoom + pan.y + (node.h * zoom) / 2;
-    transformStyle = 'translate(-50%, -50%)';
-  }
-
-  // Style: plain transparent for text nodes, accent glow for shape nodes
-  inlineEditorText.className = isTextNode ? '' : 'shape-edit';
-
-  inlineEditorText.style.fontFamily  = fp.family;
-  inlineEditorText.style.fontSize    = scaledFontSize + 'px';
-  inlineEditorText.style.fontStyle   = fp.style;
-  inlineEditorText.style.fontWeight  = fp.weight;
-  inlineEditorText.style.color       = '#000000';
-  inlineEditorText.style.textAlign   = isTextNode ? 'left' : 'center';
-  inlineEditorText.style.minWidth    = Math.max(node.w * zoom * (isTextNode ? 0.5 : 0.7), 20) + 'px';
-  inlineEditorText.style.maxWidth    = (isTextNode ? 600 : node.w * zoom * 1.6) + 'px';
-  inlineEditorText.style.lineHeight  = Math.max(scaledFontSize * 1.35, 16) + 'px';
-  inlineEditorText.style.padding     = isTextNode ? '0' : '2px 4px';
-
-  inlineEditorText.innerText = node.label || '';
-
-  inlineEditor.style.left      = editorX + 'px';
-  inlineEditor.style.top       = editorY + 'px';
-  inlineEditor.style.transform = transformStyle;
-  inlineEditor.style.display   = 'block';
-
-  requestAnimationFrame(() => {
-    inlineEditorText.focus();
-    const range = document.createRange();
-    range.selectNodeContents(inlineEditorText);
-    range.collapse(false);
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
-  });
-
-  render();
-  updateProps();
-}
-
-function commitInlineEditor() {
-  if (!inlineEditingNodeId) return;
-  const nodeId = inlineEditingNodeId;
-  const isNew = inlineEditingIsNew;
-  inlineEditingNodeId = null;
-  inlineEditingIsNew = false;
-  inlineEditor.style.display = 'none';
-
-  const node = nodes.find(n => n.id === nodeId);
-  if (node) {
-    const newLabel = inlineEditorText.innerText.replace(/\u00a0/g,' ').trimEnd();
-    inlineEditorText.innerText = '';
-
-    // Delete freshly-created text node if left empty
-    if (node.type === 'text' && isNew && !newLabel) {
-      nodes = nodes.filter(n => n.id !== nodeId);
-      // Pop the history snapshot saved on creation
-      if (history.length > 0 && historyIndex >= 0) {
-        history = history.slice(0, historyIndex);
-        historyIndex = history.length - 1;
-      }
-      selectedId = null;
-      render(); updateProps(); updateStatus();
-      return;
-    }
-
-    if (newLabel !== node.label) {
-      if (!isNew) saveHistory();
-      node.label = newLabel;
-    }
-
-    // Auto-resize text node bounding box based on actual rendered text
-    if (node.type === 'text') {
-      recalcTextNodeSize(node);
-    }
-  } else {
-    inlineEditorText.innerText = '';
-  }
-
-  render(); updateProps();
-}
-
 // Recalculate text node bounding box to fit its content
 function recalcTextNodeSize(node) {
   if (node.type !== 'text') return;
@@ -2340,7 +2198,6 @@ function recalcTextNodeSize(node) {
   const lh = Math.max(fs * 1.3, 16);
   const padX = 4, padY = 4;
   node.h = Math.max(fs + (lines.length - 1) * lh + padY, fs + padY);
-  // Use a temporary SVG text element to measure actual pixel width
   const tmpSvg = document.getElementById('canvas');
   const tmpText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
   tmpText.setAttribute('font-size', fs);
@@ -2357,62 +2214,47 @@ function recalcTextNodeSize(node) {
   tmpSvg.removeChild(tmpText);
   node.w = Math.max(maxW + padX * 2, 20);
 }
-
-function cancelInlineEditor() {
-  const nodeId = inlineEditingNodeId;
-  const isNew = inlineEditingIsNew;
-  inlineEditingNodeId = null;
-  inlineEditingIsNew = false;
-  inlineEditor.style.display = 'none';
-  inlineEditorText.innerText = '';
-
-  // If cancelled a freshly-created text node — remove it directly (no undo touch)
-  if (isNew && nodeId) {
-    nodes = nodes.filter(n => n.id !== nodeId);
-    // Also pop the history snapshot that was saved on creation
-    if (history.length > 0 && historyIndex >= 0) {
-      history = history.slice(0, historyIndex);
-      historyIndex = history.length - 1;
-    }
-    selectedId = null;
-    updateStatus();
-  }
-  render(); updateProps();
+function getNodeFontProps(node) {
+  const isGost = diagramStyle === 'gost';
+  const fam = node.fontFamily || (isGost ? 'Times New Roman' : (node.type === 'text' ? 'Times New Roman' : 'JetBrains Mono'));
+  const famCss = fam + ((fam === 'JetBrains Mono' || fam === 'Courier New') ? ',monospace' : (fam === 'Times New Roman' || fam === 'Georgia') ? ',serif' : ',sans-serif');
+  const gostSizes = { text: 14, start:12, connector:10, decision:12, io:12, for:12, subprogram:12, database:12, document:12, manual:12, comment:11, process:12 };
+  const defaultSize = isGost ? (gostSizes[node.type]||12) : (node.type === 'connector' ? 10 : node.type === 'text' ? 14 : 12);
+  return {
+    family: famCss,
+    size: node.fontSize || defaultSize,
+    style: node.fontStyle || 'normal',
+    weight: node.fontWeight || (node.type === 'text' ? '400' : (isGost ? '400' : '600')),
+  };
 }
 
-// Commit on Enter (without Shift), cancel on Escape
-inlineEditorText.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitInlineEditor(); }
-  if (e.key === 'Escape') { cancelInlineEditor(); }
-});
+function commitInlineEditor() {
+  // No-op: inline editing removed
+}
 
-// Commit when focus leaves the editor (blur)
-inlineEditorText.addEventListener('blur', e => {
-  setTimeout(() => {
-    if (!inlineEditingNodeId) return;
-    const node = nodes.find(n => n.id === inlineEditingNodeId);
-    const isEmpty = !inlineEditorText.innerText.replace(/\u00a0/g,' ').trim();
-    // New text node with no content → cancel (remove the node)
-    if (node && node.type === 'text' && inlineEditingIsNew && isEmpty) {
-      cancelInlineEditor();
-    } else {
-      commitInlineEditor();
-    }
-  }, 80);
-});
+function cancelInlineEditor() {
+  // No-op: inline editing removed
+}
 
 svg.addEventListener('dblclick', e => {
-  // If already editing, let blur handle it — don't create a second node
-  if (inlineEditingNodeId) return;
+  // Double-click on empty canvas → create a text node (no inline editing)
   const nodeGrp = e.target.closest('[data-kind="node"]');
   if (nodeGrp) {
     const node = nodes.find(n => n.id === nodeGrp.dataset.id);
     if (node) {
       e.stopPropagation();
-      openInlineEditor(node);
+      selectedId = node.id;
+      selectedIds.clear();
+      render(); updateProps();
+      // Focus the text field in the props panel
+      const propText = document.getElementById('propText');
+      if (propText && propText.closest('#propsBody') && propText.closest('#propsBody').style.display !== 'none') {
+        propText.focus();
+        propText.select();
+      }
     }
   } else {
-    // Double-click on empty canvas → create a text node and immediately edit it
+    // Double-click on empty canvas → create a text node
     const pt = svgPoint(e);
     const def = NODE_DEFAULTS['text'];
     const node = {
@@ -2429,7 +2271,11 @@ svg.addEventListener('dblclick', e => {
     nodes.push(node);
     selectedId = node.id;
     render(); updateProps(); updateStatus();
-    openInlineEditor(node, true);
+    // Focus the text prop in the sidebar
+    setTimeout(() => {
+      const propText = document.getElementById('propText');
+      if (propText) { propText.focus(); propText.select(); }
+    }, 50);
   }
 });
 
@@ -2617,12 +2463,12 @@ let renameTargetId = null;
 function getSheetTabColors() {
   const dark = document.documentElement.classList.contains('dark');
   return {
-    activeBg:    dark ? '#1a1e28' : '#ffffff',
+    activeBg:    dark ? '#131828' : '#ffffff',
     activeBorder: '#4fffb0',
     activeFg:    dark ? '#e8eaf0' : '#1a202c',
-    inactiveBg:  dark ? '#151820' : '#e8ecf4',
+    inactiveBg:  dark ? '#0e1220' : '#e8ecf4',
     inactiveFg:  dark ? '#6b7280' : '#9ca3af',
-    hoverBg:     dark ? '#1a1e28' : '#f0f2f7',
+    hoverBg:     dark ? '#131828' : '#f0f2f7',
     hoverFg:     dark ? '#d1d5db' : '#4b5563',
   };
 }
@@ -2811,8 +2657,8 @@ function showSheetContextMenu(e, id, name) {
   menu.style.cssText = `
     position:fixed;left:${e.clientX}px;top:-9999px;z-index:3000;
     min-width:160px;border-radius:8px;overflow:hidden;
-    background:${dark ? '#1a1e28' : '#ffffff'};
-    border:1px solid ${dark ? '#252a38' : '#dde1ec'};
+    background:${dark ? '#131828' : '#ffffff'};
+    border:1px solid ${dark ? '#1e2540' : '#dde1ec'};
     box-shadow:0 8px 24px rgba(0,0,0,0.35);
     font-family:'JetBrains Mono',monospace;font-size:11px;
   `;
@@ -2830,7 +2676,7 @@ function showSheetContextMenu(e, id, name) {
       transition:background 0.1s;
     `;
     if (!item.disabled) {
-      el.addEventListener('mouseenter', () => el.style.background = dark ? '#252a38' : '#f0f2f7');
+      el.addEventListener('mouseenter', () => el.style.background = dark ? '#1e2540' : '#f0f2f7');
       el.addEventListener('mouseleave', () => el.style.background = 'transparent');
       el.addEventListener('click', () => { removeSheetContextMenu(); item.action(); });
     }
