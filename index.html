@@ -606,7 +606,9 @@ let historyIndex = -1;
 let nodeIdCounter = 1;
 let edgeIdCounter = 1;
 let hoveredPort = null;
+let hoveredNodeId = null;    // node the cursor is hovering near (for port visibility)
 let hoveredCustomPtIdx = -1; // index of the custom point hovered in the sidebar panel
+let snapTarget = null;       // { node, port } — magnetic snap candidate while drawing a connection
 let connectingTemp = null;
 let connectingFromPort = null; // port id where drag started
 let edgeStyle = "orthogonal"; // orthogonal | curved
@@ -1439,22 +1441,35 @@ function render() {
     } // end if not inline-editing text
 
     // Ports — skip for text nodes
-    const showPorts = !isTextNode && (isSelected || isConnectSrc || hoveredPort?.nodeId === node.id);
+    const showPorts = !isTextNode && (isSelected || isConnectSrc || hoveredNodeId === node.id);
     getPorts(node).forEach(port => {
       const isHovPort = hoveredPort && hoveredPort.nodeId === node.id && hoveredPort.portId === port.id;
+      const portColor = isDark() ? '#4fffb0' : '#00c070';
+
+      // Large invisible hit area — makes ports easy to grab from nearby
+      const hitCirc = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      hitCirc.setAttribute('cx', port.px);
+      hitCirc.setAttribute('cy', port.py);
+      hitCirc.setAttribute('r', 14);
+      hitCirc.setAttribute('fill', 'transparent');
+      hitCirc.setAttribute('stroke', 'none');
+      hitCirc.setAttribute('opacity', showPorts ? '1' : '0');
+      hitCirc.style.cursor = 'crosshair';
+      hitCirc.dataset.kind = 'port';
+      hitCirc.dataset.nodeId = node.id;
+      hitCirc.dataset.portId = port.id;
+      grp.appendChild(hitCirc);
+
+      // Visible port circle
       const pc = document.createElementNS('http://www.w3.org/2000/svg','circle');
       pc.setAttribute('cx', port.px);
       pc.setAttribute('cy', port.py);
       pc.setAttribute('r', isHovPort ? 7 : 5);
-      const portColor = isDark() ? '#4fffb0' : '#00c070';
       pc.setAttribute('fill', isHovPort ? portColor : 'transparent');
       pc.setAttribute('stroke', portColor);
       pc.setAttribute('stroke-width', isDark() ? '1.5' : '2');
       pc.setAttribute('opacity', showPorts ? '1' : '0');
-      pc.style.cursor = 'crosshair';
-      pc.dataset.kind = 'port';
-      pc.dataset.nodeId = node.id;
-      pc.dataset.portId = port.id;
+      pc.setAttribute('pointer-events', 'none');
       grp.appendChild(pc);
     });
 
@@ -1591,13 +1606,54 @@ function render() {
     const p = connectingFromPort
       ? srcPorts.find(pt => pt.id === connectingFromPort)
       : closestPort(src, connectingTemp.x, connectingTemp.y);
+
+    // Snap end: if we have a snap target, line tip goes to that port
+    const endX = snapTarget ? snapTarget.port.px : connectingTemp.x;
+    const endY = snapTarget ? snapTarget.port.py : connectingTemp.y;
+
     line.setAttribute('x1', p.px); line.setAttribute('y1', p.py);
-    line.setAttribute('x2', connectingTemp.x); line.setAttribute('y2', connectingTemp.y);
+    line.setAttribute('x2', endX); line.setAttribute('y2', endY);
     line.setAttribute('stroke', '#4fffb0');
     line.setAttribute('stroke-width', '1.5');
     line.setAttribute('stroke-dasharray', '6,4');
     line.setAttribute('marker-end','url(#arrowhead-active)');
     g.appendChild(line);
+
+    // Highlight snap target port
+    if (snapTarget) {
+      const sp = snapTarget.port;
+
+      // Pulsing ring around the snap port
+      const snapRing = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      snapRing.setAttribute('cx', sp.px); snapRing.setAttribute('cy', sp.py);
+      snapRing.setAttribute('r', 12 / zoom);
+      snapRing.setAttribute('fill', 'rgba(79,255,176,0.15)');
+      snapRing.setAttribute('stroke', '#4fffb0');
+      snapRing.setAttribute('stroke-width', 1.5 / zoom);
+      snapRing.setAttribute('pointer-events','none');
+      g.appendChild(snapRing);
+
+      // Inner dot
+      const snapDot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      snapDot.setAttribute('cx', sp.px); snapDot.setAttribute('cy', sp.py);
+      snapDot.setAttribute('r', 5 / zoom);
+      snapDot.setAttribute('fill', '#4fffb0');
+      snapDot.setAttribute('pointer-events','none');
+      g.appendChild(snapDot);
+
+      // Snap indicator label
+      const snapLabel = document.createElementNS('http://www.w3.org/2000/svg','text');
+      snapLabel.setAttribute('x', sp.px);
+      snapLabel.setAttribute('y', sp.py - 16 / zoom);
+      snapLabel.setAttribute('text-anchor','middle');
+      snapLabel.setAttribute('font-size', 9 / zoom);
+      snapLabel.setAttribute('font-family','JetBrains Mono, monospace');
+      snapLabel.setAttribute('font-weight','700');
+      snapLabel.setAttribute('fill','#4fffb0');
+      snapLabel.setAttribute('pointer-events','none');
+      snapLabel.textContent = '⌁ snap';
+      g.appendChild(snapLabel);
+    }
   }
 
   // Polygon draw preview
@@ -2330,16 +2386,56 @@ svg.addEventListener('mousemove', e => {
     applyTransform(); updateMinimap(); return;
   }
   if (connectingFrom) {
-    connectingTemp = pt; render();
+    connectingTemp = pt;
+
+    // Magnetic snap: find nearest node (not the source) within snap radius
+    const SNAP_PX = 12; // screen-space radius
+    const SNAP_SVG = SNAP_PX / zoom; // convert to SVG coords
+    let bestSnap = null, bestDist = Infinity;
+    nodes.forEach(n => {
+      if (n.id === connectingFrom || n.type === 'text') return;
+      // Distance to node bounding box (nearest point on box perimeter/interior)
+      const cx = Math.max(n.x, Math.min(pt.x, n.x + n.w));
+      const cy = Math.max(n.y, Math.min(pt.y, n.y + n.h));
+      const dist = Math.hypot(pt.x - cx, pt.y - cy);
+      if (dist < SNAP_SVG && dist < bestDist) {
+        bestDist = dist;
+        bestSnap = n;
+      }
+    });
+    if (bestSnap) {
+      const srcNode = nodes.find(n => n.id === connectingFrom);
+      const srcCenter = srcNode ? getNodeCenter(srcNode) : pt;
+      const port = getBestToPort(bestSnap, srcCenter, pt);
+      snapTarget = { node: bestSnap, port };
+    } else {
+      snapTarget = null;
+    }
+
+    render();
   }
   const target = e.target;
   if (target.dataset.kind === 'port') {
     hoveredPort = { nodeId: target.dataset.nodeId, portId: target.dataset.portId };
+    hoveredNodeId = target.dataset.nodeId;
     render();
   } else if (target.closest && target.closest('[data-kind="seghandle"]')) {
     // cursor already set on element, no re-render needed
-  } else if (hoveredPort) {
-    hoveredPort = null; render();
+  } else {
+    // Proximity check: show ports when cursor is within NODE_HOVER_PAD of any node bounding box
+    const NODE_HOVER_PAD = 20 / zoom;
+    const nearNode = nodes.find(n =>
+      n.type !== 'text' &&
+      pt.x >= n.x - NODE_HOVER_PAD && pt.x <= n.x + n.w + NODE_HOVER_PAD &&
+      pt.y >= n.y - NODE_HOVER_PAD && pt.y <= n.y + n.h + NODE_HOVER_PAD
+    );
+    const newHoveredNodeId = nearNode ? nearNode.id : null;
+    const newHoveredPort = null;
+    if (newHoveredNodeId !== hoveredNodeId || hoveredPort !== null) {
+      hoveredNodeId = newHoveredNodeId;
+      hoveredPort = newHoveredPort;
+      render();
+    }
   }
 });
 
@@ -2514,9 +2610,27 @@ svg.addEventListener('mouseup', e => {
 
   // Complete connection on mouseup — works for both drag and click
   if (connectingFrom) {
-    // Use svgPoint to find which node is under the cursor by geometry (with padding)
     const pt = svgPoint(e);
-    const PAD = 12; // extra hit area around each node
+
+    // 1) Magnetic snap: if we have a snap target, use it directly
+    if (snapTarget) {
+      const toNode = snapTarget.node;
+      const toPort = snapTarget.port;
+      saveHistory();
+      edges = edges.filter(ed => !(
+        (ed.from === connectingFrom && ed.fromPort === connectingFromPort) ||
+        (ed.to === toNode.id && ed.toPort === toPort.id) ||
+        (ed.to === connectingFrom && ed.toPort === connectingFromPort) ||
+        (ed.from === toNode.id && ed.fromPort === toPort.id)
+      ));
+      edges.push({ id:`e${edgeIdCounter++}`, from:connectingFrom, fromPort:connectingFromPort, to:toNode.id, toPort:toPort.id, label:'' });
+      updateStatus();
+      connectingFrom = null; connectingFromPort = null; connectingTemp = null; snapTarget = null; hoveredNodeId = null; hoveredPort = null;
+      render(); return;
+    }
+
+    // 2) Precise geometric hit (original behaviour, wider PAD)
+    const PAD = 12;
     const targetNode = nodes.find(n =>
       n.id !== connectingFrom &&
       pt.x >= n.x - PAD && pt.x <= n.x + n.w + PAD &&
@@ -2527,7 +2641,6 @@ svg.addEventListener('mouseup', e => {
       const srcNode = nodes.find(n => n.id === connectingFrom);
       const srcCenter = srcNode ? getNodeCenter(srcNode) : { x: pt.x, y: pt.y };
       const toPort = getBestToPort(targetNode, srcCenter, pt);
-      // One edge per port: remove anything using fromPort (out) or toPort (in)
       saveHistory();
       edges = edges.filter(ed => !(
         (ed.from === connectingFrom && ed.fromPort === connectingFromPort) ||
@@ -2537,11 +2650,11 @@ svg.addEventListener('mouseup', e => {
       ));
       edges.push({ id:`e${edgeIdCounter++}`, from:connectingFrom, fromPort:connectingFromPort, to:targetNode.id, toPort:toPort.id, label:'' });
       updateStatus();
-      connectingFrom = null; connectingFromPort = null; connectingTemp = null;
+      connectingFrom = null; connectingFromPort = null; connectingTemp = null; snapTarget = null; hoveredNodeId = null; hoveredPort = null;
       render(); return;
     }
 
-    // Also try elementFromPoint as fallback (for non-rectangular shapes)
+    // 3) DOM elementFromPoint fallback (non-rectangular shapes)
     const domTarget = document.elementFromPoint(e.clientX, e.clientY);
     const nodeGrp = domTarget && domTarget.closest('[data-kind="node"]');
     if (nodeGrp && nodeGrp.dataset.id !== connectingFrom) {
@@ -2559,12 +2672,12 @@ svg.addEventListener('mouseup', e => {
       ));
       edges.push({ id:`e${edgeIdCounter++}`, from:connectingFrom, fromPort:connectingFromPort, to:toId, toPort:toPort.id, label:'' });
       updateStatus();
-      connectingFrom = null; connectingFromPort = null; connectingTemp = null;
+      connectingFrom = null; connectingFromPort = null; connectingTemp = null; snapTarget = null; hoveredNodeId = null; hoveredPort = null;
       render(); return;
     }
 
     // Released on empty canvas — cancel
-    connectingFrom = null; connectingFromPort = null; connectingTemp = null;
+    connectingFrom = null; connectingFromPort = null; connectingTemp = null; snapTarget = null; hoveredNodeId = null; hoveredPort = null;
     render();
   }
 });
@@ -3047,7 +3160,7 @@ document.addEventListener('keydown', e => {
   // Escape — deselect / cancel connecting
   if (e.key === 'Escape') {
     e.preventDefault(); e.stopPropagation();
-    connectingFrom = null; connectingTemp = null;
+    connectingFrom = null; connectingTemp = null; snapTarget = null;
     selectedId = null; selectedIds.clear();
     render(); updateProps();
     return;
