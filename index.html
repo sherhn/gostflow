@@ -628,6 +628,7 @@ let draggingSegment = null; // { edgeId, segIndex, axis }
 let draggingParallelResize = null; // { nodeId, side: 'left'|'right', startX, startNodeX, startNodeW }
 // Clipboard
 let clipboard = null; // { nodes: [...], edges: [...] }
+let alignSnapGuides = []; // { x1, y1, x2, y2 } lines to draw during drag
 
 // Polygon drawing state
 let polygonDrawMode = false;
@@ -973,6 +974,95 @@ function getNodeRect(node, margin) {
 // Check if a point is inside a rect
 function pointInRect(px, py, rect) {
   return px >= rect.x && px <= rect.x + rect.w && py >= rect.y && py <= rect.y + rect.h;
+}
+
+// Alignment snap during node drag.
+// dragged: the node(s) being moved (array of node objects, already at new position).
+// excludeIds: Set of node ids to skip (the dragged ones).
+// Returns { dx, dy, guides[] } — corrections to apply and lines to draw.
+function computeAlignSnap(dragged, excludeIds) {
+  const SNAP_SVG = 6 / zoom;
+  const others = nodes.filter(n => !excludeIds.has(n.id) && n.type !== 'text');
+  if (!others.length) return { dx: 0, dy: 0, guides: [] };
+
+  // Alignment anchors for each dragged node: left, center-x, right, top, center-y, bottom
+  const guides = [];
+  let bestDx = null, bestDy = null;
+  let bestDxDist = SNAP_SVG, bestDyDist = SNAP_SVG;
+
+  dragged.forEach(dn => {
+    const dnCx = dn.x + dn.w / 2, dnCy = dn.y + dn.h / 2;
+    const dnAnchorsX = [dn.x, dnCx, dn.x + dn.w];
+    const dnAnchorsY = [dn.y, dnCy, dn.y + dn.h];
+
+    others.forEach(on => {
+      const onCx = on.x + on.w / 2, onCy = on.y + on.h / 2;
+      const onAnchorsX = [on.x, onCx, on.x + on.w];
+      const onAnchorsY = [on.y, onCy, on.y + on.h];
+
+      // X alignment
+      dnAnchorsX.forEach(da => {
+        onAnchorsX.forEach(oa => {
+          const dist = Math.abs(da - oa);
+          if (dist < bestDxDist) {
+            bestDxDist = dist;
+            bestDx = oa - da;
+          }
+        });
+      });
+
+      // Y alignment
+      dnAnchorsY.forEach(da => {
+        onAnchorsY.forEach(oa => {
+          const dist = Math.abs(da - oa);
+          if (dist < bestDyDist) {
+            bestDyDist = dist;
+            bestDy = oa - da;
+          }
+        });
+      });
+    });
+  });
+
+  const dx = bestDx || 0, dy = bestDy || 0;
+
+  // Build guide lines after applying snap
+  if (dx !== 0 || dy !== 0) {
+    dragged.forEach(dn => {
+      const snappedX = dn.x + dx, snappedY = dn.y + dy;
+      const snappedCx = snappedX + dn.w / 2, snappedCy = snappedY + dn.h / 2;
+      const dnAnchorsX = [snappedX, snappedCx, snappedX + dn.w];
+      const dnAnchorsY = [snappedY, snappedCy, snappedY + dn.h];
+
+      others.forEach(on => {
+        const onCx = on.x + on.w / 2, onCy = on.y + on.h / 2;
+        const onAnchorsX = [on.x, onCx, on.x + on.w];
+        const onAnchorsY = [on.y, onCy, on.y + on.h];
+
+        dnAnchorsX.forEach(da => {
+          onAnchorsX.forEach(oa => {
+            if (Math.abs(da - oa) < 0.5) {
+              // Vertical guide line at x = oa
+              const allY = [snappedY, snappedY + dn.h, on.y, on.y + on.h];
+              guides.push({ x1: oa, y1: Math.min(...allY) - 20, x2: oa, y2: Math.max(...allY) + 20 });
+            }
+          });
+        });
+
+        dnAnchorsY.forEach(da => {
+          onAnchorsY.forEach(oa => {
+            if (Math.abs(da - oa) < 0.5) {
+              // Horizontal guide line at y = oa
+              const allX = [snappedX, snappedX + dn.w, on.x, on.x + on.w];
+              guides.push({ x1: Math.min(...allX) - 20, y1: oa, x2: Math.max(...allX) + 20, y2: oa });
+            }
+          });
+        });
+      });
+    });
+  }
+
+  return { dx, dy, guides };
 }
 
 // Check if a horizontal segment (y=py, x from xa to xb) intersects a rect
@@ -1906,6 +1996,21 @@ function render() {
     }
   }
 
+  // Alignment snap guides (shown during node drag)
+  if (alignSnapGuides.length > 0) {
+    alignSnapGuides.forEach(gl => {
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', gl.x1); line.setAttribute('y1', gl.y1);
+      line.setAttribute('x2', gl.x2); line.setAttribute('y2', gl.y2);
+      line.setAttribute('stroke', '#4fffb0');
+      line.setAttribute('stroke-width', '0.7');
+      line.setAttribute('stroke-dasharray', '4,3');
+      line.setAttribute('opacity', '0.75');
+      line.setAttribute('pointer-events', 'none');
+      g.appendChild(line);
+    });
+  }
+
   updateMinimap();
 }
 
@@ -2535,8 +2640,13 @@ svg.addEventListener('mousemove', e => {
       node.x = pt.x - ox;
       node.y = pt.y - oy;
     });
+    // Alignment snap for the group
+    const draggedNodes = multiDragOffsets.map(d => d.node);
+    const draggedIds = new Set(draggedNodes.map(n => n.id));
+    const { dx, dy, guides } = computeAlignSnap(draggedNodes, draggedIds);
+    draggedNodes.forEach(n => { n.x += dx; n.y += dy; });
+    alignSnapGuides = guides;
     // Clear segOffsets for edges connected to any dragged node
-    const draggedIds = new Set(multiDragOffsets.map(d => d.node.id));
     edges.forEach(ed => {
       if (draggedIds.has(ed.from) || draggedIds.has(ed.to)) ed.segOffsets = {};
     });
@@ -2554,6 +2664,11 @@ svg.addEventListener('mousemove', e => {
   if (draggingNode) {
     draggingNode.x = pt.x - draggingOffset.x;
     draggingNode.y = pt.y - draggingOffset.y;
+    // Alignment snap
+    const { dx, dy, guides } = computeAlignSnap([draggingNode], new Set([draggingNode.id]));
+    draggingNode.x += dx;
+    draggingNode.y += dy;
+    alignSnapGuides = guides;
     // Clear segOffsets for connected edges so routing recalculates
     edges.forEach(ed => {
       if (ed.from === draggingNode.id || ed.to === draggingNode.id) {
@@ -2839,6 +2954,7 @@ svg.addEventListener('mouseup', e => {
       updateStatus(); updateProps();
     }
     multiDragOffsets = [];
+    alignSnapGuides = [];
     deleteZone.style.display = 'none';
     deleteZone.style.background = 'rgba(255,107,107,0.10)';
     deleteZone.style.borderColor = '#ff6b6b';
@@ -2855,6 +2971,7 @@ svg.addEventListener('mouseup', e => {
       updateStatus(); updateProps();
     }
     draggingNode = null;
+    alignSnapGuides = [];
     deleteZone.style.display = 'none';
     deleteZone.style.background = 'rgba(255,107,107,0.10)';
     deleteZone.style.borderColor = '#ff6b6b';
