@@ -214,6 +214,13 @@
           Подпрограмма
         </div>
 
+        <div class="palette-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg dark:border-dark-border border-light-border border cursor-grab transition-all text-xs font-semibold dark:hover:border-accent hover:border-accent dark:text-gray-200 text-gray-700 hover:translate-x-0.5 select-none" draggable="true" data-type="parallel">
+          <div class="w-7 h-5 flex items-center justify-center flex-shrink-0">
+            <svg width="28" height="20" viewBox="0 0 28 20"><line x1="1" y1="7" x2="27" y2="7" stroke="#4fffb0" stroke-width="1.8"/><line x1="1" y1="13" x2="27" y2="13" stroke="#4fffb0" stroke-width="1.8"/></svg>
+          </div>
+          Параллельно
+        </div>
+
         <div class="palette-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg dark:border-dark-border border-light-border border cursor-grab transition-all text-xs font-semibold dark:hover:border-accent hover:border-accent dark:text-gray-200 text-gray-700 hover:translate-x-0.5 select-none" draggable="true" data-type="text">
           <div class="w-7 h-5 flex items-center justify-center flex-shrink-0">
             <span style="font-size:13px;font-weight:700;color:#374151;font-family:serif;line-height:1">T</span>
@@ -263,7 +270,8 @@
         • ←↑→↓ — сдвиг (Shift×10)<br>
         • ПКМ — контекст. меню<br>
         • Колесо — масштаб<br>
-        • ПКМ+тащи — панорама
+        • ПКМ+тащи — панорама<br>
+        • <span class="text-accent">Параллельно</span>: клик в центр — выбор/перемещение; hover линии → стрелка
       </div>
     </div>
   </div>
@@ -347,6 +355,7 @@
             <option value="loop_end">Конец цикла</option>
             <option value="subprogram">Подпрограмма</option>
             <option value="comment">Комментарий</option>
+            <option value="parallel">Параллельные действия</option>
             <option value="custom">Произвольная</option>
           </select>
         </div>
@@ -611,10 +620,12 @@ let hoveredCustomPtIdx = -1; // index of the custom point hovered in the sidebar
 let snapTarget = null;       // { node, port } — magnetic snap candidate while drawing a connection
 let connectingTemp = null;
 let connectingFromPort = null; // port id where drag started
+let connectingFromPortX = null; // stored X for parallel line-port attach point
 let edgeStyle = "orthogonal"; // orthogonal | curved
 let diagramStyle = "gost";   // gost | strict | smooth
 // Segment dragging state
 let draggingSegment = null; // { edgeId, segIndex, axis }
+let draggingParallelResize = null; // { nodeId, side: 'left'|'right', startX, startNodeX, startNodeW }
 // Clipboard
 let clipboard = null; // { nodes: [...], edges: [...] }
 
@@ -675,6 +686,7 @@ const NODE_DEFAULTS = {
   loop_end:   { w: 120,  h: 80,   color: '#000000', label: 'Конец цикла',  paramA: 80 },
   subprogram: { w: 120,  h: 80,   color: '#000000', label: 'Подпрограмма', paramA: 80 },
   comment:    { w: 60,   h: 80,   color: '#000000', label: 'Комментарий', paramA: 80 },
+  parallel:   { w: 120,  h: 16,   color: '#000000', label: '',            paramA: 80 },
   custom:     { w: 120,  h: 80,   color: '#000000', label: '' },
 };
 
@@ -757,6 +769,16 @@ function getNodeShape(node) {
     case 'loop_end':  { const lp = node.paramA ? node.paramA*0.25 : h*0.3; return `<polygon points="${x+w/2},${y} ${x+w},${y+lp} ${x+w},${y+h} ${x},${y+h} ${x},${y+lp}"/>`; }
     // Подпрограмма: h=a, b=1.5a, боковые полосы=0.15a
     case 'subprogram':{ const bar = node.paramA ? node.paramA*0.15 : w*0.1; return `<g><rect x="${x}" y="${y}" width="${w}" height="${h}"/><line x1="${x+bar}" y1="${y}" x2="${x+bar}" y2="${y+h}" stroke-width="1.5"/><line x1="${x+w-bar}" y1="${y}" x2="${x+w-bar}" y2="${y+h}" stroke-width="1.5"/></g>`; }
+    // Параллельные действия: две горизонтальные линии
+    case 'parallel': {
+      const y1 = y + h * 0.25;
+      const y2 = y + h * 0.75;
+      return `<g>
+        <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="transparent" stroke="none" class="node-hitbox"/>
+        <line x1="${x}" y1="${y1}" x2="${x+w}" y2="${y1}" stroke-width="1.8"/>
+        <line x1="${x}" y1="${y2}" x2="${x+w}" y2="${y2}" stroke-width="1.8"/>
+      </g>`;
+    }
     // Комментарий по ГОСТ 19.003-80: скобка [ — вертикальная черта + верхний и нижний горизонтальные усы
     case 'comment': {
       const bw = Math.min(w * 0.3, h * 0.4); // длина усов скобки
@@ -829,6 +851,15 @@ function getPorts(node) {
     b = { id:'b', px: x+w/2, py: y+h };
     l = { id:'l', px: x,     py: y+lp+(h-lp)/2 };
     r = { id:'r', px: x+w,   py: y+lp+(h-lp)/2 };
+  } else if (type === 'parallel') {
+    // Two line-ports: top line and bottom line.
+    // px is the center by default; actual connection point X is resolved at connect time.
+    const y1 = y + h * 0.25;
+    const y2 = y + h * 0.75;
+    return [
+      { id: 'tline', px: x + w / 2, py: y1, isLine: true, lineY: y1 },
+      { id: 'bline', px: x + w / 2, py: y2, isLine: true, lineY: y2 },
+    ];
   } else if (type === 'comment') {
     // Скобка [: только три порта — верх, низ, лево (на вертикальной черте)
     t = { id:'t', px: x,     py: y };
@@ -850,6 +881,15 @@ function getPorts(node) {
   return [t, r, b, l];
 }
 function closestPort(node, tx, ty) {
+  if (node.type === 'parallel') {
+    const y1 = node.y + node.h * 0.25;
+    const y2 = node.y + node.h * 0.75;
+    const useBottom = Math.abs(ty - y2) < Math.abs(ty - y1);
+    const lineY = useBottom ? y2 : y1;
+    const lineId = useBottom ? 'bline' : 'tline';
+    const attachX = Math.max(node.x, Math.min(tx, node.x + node.w));
+    return { id: lineId, px: attachX, py: lineY, isLine: true };
+  }
   const ports = getPorts(node);
   let best = null, bd = Infinity;
   ports.forEach(p => {
@@ -864,6 +904,18 @@ function closestPort(node, tx, ty) {
 // targetNode: the destination node
 // dropPt: where user dropped the connection
 function getBestToPort(targetNode, srcCenter, dropPt) {
+  // Parallel: pick the line closest to source, attach at cursor X
+  if (targetNode.type === 'parallel') {
+    const y1 = targetNode.y + targetNode.h * 0.25;
+    const y2 = targetNode.y + targetNode.h * 0.75;
+    const useBottom = srcCenter && srcCenter.y > targetNode.y + targetNode.h / 2;
+    const lineY = useBottom ? y2 : y1;
+    const lineId = useBottom ? 'bline' : 'tline';
+    const attachX = dropPt
+      ? Math.max(targetNode.x, Math.min(dropPt.x, targetNode.x + targetNode.w))
+      : targetNode.x + targetNode.w / 2;
+    return { id: lineId, px: attachX, py: lineY, isLine: true };
+  }
   const ports = getPorts(targetNode);
   const cx = targetNode.x + targetNode.w / 2;
   const cy = targetNode.y + targetNode.h / 2;
@@ -900,6 +952,10 @@ function getBestToPort(targetNode, srcCenter, dropPt) {
   return best || ports[0];
 }
 function getPortDir(portId) {
+  if (portId === 'tline') return [0, -1];
+  if (portId === 'bline') return [0,  1];
+  if (portId && portId.startsWith('t')) return [0, -1];
+  if (portId && portId.startsWith('b')) return [0,  1];
   return { t: [0,-1], b: [0,1], l: [-1,0], r: [1,0] }[portId] || [0,1];
 }
 
@@ -943,8 +999,15 @@ const AVOID_MARGIN = 18; // margin around nodes for routing
 function buildOrthogonalWaypoints(edge, src, dst) {
   const srcPorts = getPorts(src);
   const dstPorts = getPorts(dst);
-  const sp = edge.fromPort ? srcPorts.find(p => p.id === edge.fromPort) || srcPorts[2] : srcPorts[2];
-  const ep = edge.toPort   ? dstPorts.find(p => p.id === edge.toPort)   || dstPorts[0] : dstPorts[0];
+  let sp = edge.fromPort ? srcPorts.find(p => p.id === edge.fromPort) || srcPorts[2] : srcPorts[2];
+  let ep = edge.toPort   ? dstPorts.find(p => p.id === edge.toPort)   || dstPorts[0] : dstPorts[0];
+  // For parallel nodes, use the stored attach X if available
+  if (sp && sp.isLine && edge.fromPortX !== undefined) {
+    sp = { ...sp, px: Math.max(src.x, Math.min(edge.fromPortX, src.x + src.w)) };
+  }
+  if (ep && ep.isLine && edge.toPortX !== undefined) {
+    ep = { ...ep, px: Math.max(dst.x, Math.min(edge.toPortX, dst.x + dst.w)) };
+  }
 
   const fd = getPortDir(sp.id);
   const td = getPortDir(ep.id);
@@ -1114,8 +1177,10 @@ function getEdgePath(edge) {
   if (edgeStyle === "curved") {
     const srcPorts = getPorts(src);
     const dstPorts = getPorts(dst);
-    const sp = edge.fromPort ? srcPorts.find(p => p.id === edge.fromPort) || srcPorts[2] : srcPorts[2];
-    const ep = edge.toPort   ? dstPorts.find(p => p.id === edge.toPort)   || dstPorts[0] : dstPorts[0];
+    let sp = edge.fromPort ? srcPorts.find(p => p.id === edge.fromPort) || srcPorts[2] : srcPorts[2];
+    let ep = edge.toPort   ? dstPorts.find(p => p.id === edge.toPort)   || dstPorts[0] : dstPorts[0];
+    if (sp && sp.isLine && edge.fromPortX !== undefined) sp = { ...sp, px: Math.max(src.x, Math.min(edge.fromPortX, src.x + src.w)) };
+    if (ep && ep.isLine && edge.toPortX !== undefined)   ep = { ...ep, px: Math.max(dst.x, Math.min(edge.toPortX,   dst.x + dst.w)) };
     const fromDir = getPortDir(sp.id);
     const toDir   = getPortDir(ep.id);
     const dist = Math.sqrt((ep.px-sp.px)**2 + (ep.py-sp.py)**2);
@@ -1174,10 +1239,10 @@ function render() {
   const labelBg   = isGost ? '#ffffff'  : (isDark() ? '#131828' : '#ffffff');
   const labelFg   = isGost ? '#000000'  : (isDark() ? '#9ca3af' : '#6b7280');
   const nodeFills = isGost
-    ? { text:'transparent', start:'#ffffff', process:'#ffffff', decision:'#ffffff', io:'#ffffff', connector:'#ffffff', for:'#ffffff', subprogram:'#ffffff', database:'#ffffff', document:'#ffffff', manual:'#ffffff', comment:'#ffffff', custom:'#ffffff' }
+    ? { text:'transparent', start:'#ffffff', process:'#ffffff', decision:'#ffffff', io:'#ffffff', connector:'#ffffff', for:'#ffffff', subprogram:'#ffffff', database:'#ffffff', document:'#ffffff', manual:'#ffffff', comment:'#ffffff', parallel:'#ffffff', custom:'#ffffff' }
     : (isDark()
-      ? { text:'transparent', start:'#0f2b1a', process:'#0d1a35', decision:'#1a0d2b', io:'#2b1f0a', connector:'#2b0d0d', for:'#0d2b20', subprogram:'#0d2b2b', database:'#2b0d20', document:'#2b1a0d', manual:'#250d2b', comment:'#0d2b14', custom:'#1e0d2b' }
-      : { text:'transparent', start:'#d1fae5', process:'#dbeafe', decision:'#ede9fe', io:'#fef3c7', connector:'#fee2e2', for:'#d1fae5', subprogram:'#cffafe', database:'#fce7f3', document:'#ffedd5', manual:'#fae8ff', comment:'#f0fdf4', custom:'#f3e8ff' });
+      ? { text:'transparent', start:'#0f2b1a', process:'#0d1a35', decision:'#1a0d2b', io:'#2b1f0a', connector:'#2b0d0d', for:'#0d2b20', subprogram:'#0d2b2b', database:'#2b0d20', document:'#2b1a0d', manual:'#250d2b', comment:'#0d2b14', parallel:'transparent', custom:'#1e0d2b' }
+      : { text:'transparent', start:'#d1fae5', process:'#dbeafe', decision:'#ede9fe', io:'#fef3c7', connector:'#fee2e2', for:'#d1fae5', subprogram:'#cffafe', database:'#fce7f3', document:'#ffedd5', manual:'#fae8ff', comment:'#f0fdf4', parallel:'transparent', custom:'#f3e8ff' });
 
   // Update arrowhead colour for GOST
   const arrowEl = document.getElementById('arrowhead');
@@ -1359,6 +1424,35 @@ function render() {
         selRect.setAttribute('pointer-events', 'none');
         grp.insertBefore(selRect, grp.firstChild);
       }
+    } else if (node.type === 'parallel') {
+      // Parallel: only the lines get stroke, hitbox rect stays transparent
+      Array.from(bodyShape.children).forEach(child => {
+        if (child.tagName === 'line') {
+          child.setAttribute('stroke', isGost ? '#000000' : strokeColor);
+          child.setAttribute('stroke-width', '1.8');
+          child.setAttribute('fill', 'none');
+        } else {
+          child.setAttribute('fill', 'transparent');
+          child.setAttribute('stroke', 'none');
+        }
+      });
+      bodyShape.setAttribute('fill', 'none');
+      bodyShape.setAttribute('stroke', 'none');
+      if (isSelected) {
+        const selRect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+        selRect.setAttribute('x', node.x - 2);
+        selRect.setAttribute('y', node.y - 2);
+        selRect.setAttribute('width', node.w + 4);
+        selRect.setAttribute('height', node.h + 4);
+        selRect.setAttribute('rx', '2');
+        selRect.setAttribute('fill', 'none');
+        selRect.setAttribute('stroke', isGost ? '#555' : '#4fffb0');
+        selRect.setAttribute('stroke-width', '2');
+        selRect.setAttribute('stroke-dasharray', '5,3');
+        selRect.setAttribute('opacity', '1');
+        selRect.setAttribute('pointer-events', 'none');
+        grp.insertBefore(selRect, grp.firstChild);
+      }
     } else if (node.type === 'comment') {
       // Comment: only the lines get stroke, hitbox rect stays transparent, group itself transparent
       Array.from(bodyShape.children).forEach(child => {
@@ -1442,6 +1536,42 @@ function render() {
 
     // Ports — skip for text nodes
     const showPorts = !isTextNode && (isSelected || isConnectSrc || hoveredNodeId === node.id);
+    if (node.type === 'parallel') {
+      // Line-port highlight: glow the whole line on hover/select instead of circles
+      const y1 = node.y + node.h * 0.25;
+      const y2 = node.y + node.h * 0.75;
+      const portColor = isDark() ? '#4fffb0' : '#00c070';
+      // Port hit areas: always rendered but narrow (±5px), so only activate near the line.
+      // hoveredNodeId for parallel is only set when cursor is near a line (see mousemove),
+      // so showPorts already means cursor is near a line.
+      if (showPorts) {
+        [y1, y2].forEach((lineY, li) => {
+          const lineId = li === 0 ? 'tline' : 'bline';
+          const hitLine = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          hitLine.setAttribute('x', node.x);
+          hitLine.setAttribute('y', lineY - 5);
+          hitLine.setAttribute('width', node.w);
+          hitLine.setAttribute('height', 10);
+          hitLine.setAttribute('fill', 'transparent');
+          hitLine.setAttribute('stroke', 'none');
+          hitLine.style.cursor = 'crosshair';
+          hitLine.dataset.kind = 'port';
+          hitLine.dataset.nodeId = node.id;
+          hitLine.dataset.portId = lineId;
+          grp.appendChild(hitLine);
+
+          // Visible glow line
+          const glowLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          glowLine.setAttribute('x1', node.x); glowLine.setAttribute('y1', lineY);
+          glowLine.setAttribute('x2', node.x + node.w); glowLine.setAttribute('y2', lineY);
+          glowLine.setAttribute('stroke', portColor);
+          glowLine.setAttribute('stroke-width', '3');
+          glowLine.setAttribute('stroke-opacity', '0.55');
+          glowLine.setAttribute('pointer-events', 'none');
+          grp.appendChild(glowLine);
+        });
+      }
+    } else {
     getPorts(node).forEach(port => {
       const isHovPort = hoveredPort && hoveredPort.nodeId === node.id && hoveredPort.portId === port.id;
       const portColor = isDark() ? '#4fffb0' : '#00c070';
@@ -1472,6 +1602,49 @@ function render() {
       pc.setAttribute('pointer-events', 'none');
       grp.appendChild(pc);
     });
+    } // end parallel else
+
+    // Parallel resize handles — left and right ends, shown when selected
+    if (node.type === 'parallel' && isSelected) {
+      const cy = node.y + node.h / 2;
+      const handleR = 6;
+      [{ side: 'left', cx: node.x }, { side: 'right', cx: node.x + node.w }].forEach(({ side, cx }) => {
+        // Invisible wide hit area
+        const hitR = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        hitR.setAttribute('x', cx - 10);
+        hitR.setAttribute('y', node.y - 8);
+        hitR.setAttribute('width', 20);
+        hitR.setAttribute('height', node.h + 16);
+        hitR.setAttribute('fill', 'transparent');
+        hitR.setAttribute('stroke', 'none');
+        hitR.style.cursor = 'ew-resize';
+        hitR.dataset.kind = 'parallelResize';
+        hitR.dataset.nodeId = node.id;
+        hitR.dataset.side = side;
+        grp.appendChild(hitR);
+
+        // Visible handle — double vertical bar
+        const hg = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        hg.setAttribute('pointer-events', 'none');
+        [-3, 3].forEach(dx => {
+          const bar = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          bar.setAttribute('x1', cx + dx); bar.setAttribute('y1', cy - handleR);
+          bar.setAttribute('x2', cx + dx); bar.setAttribute('y2', cy + handleR);
+          bar.setAttribute('stroke', '#4fffb0');
+          bar.setAttribute('stroke-width', '2');
+          bar.setAttribute('stroke-linecap', 'round');
+          hg.appendChild(bar);
+        });
+        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        dot.setAttribute('cx', cx); dot.setAttribute('cy', cy);
+        dot.setAttribute('r', handleR + 1);
+        dot.setAttribute('fill', isDark() ? '#131828' : '#fff');
+        dot.setAttribute('stroke', '#4fffb0');
+        dot.setAttribute('stroke-width', '1.5');
+        hg.insertBefore(dot, hg.firstChild);
+        grp.appendChild(hg);
+      });
+    }
 
     g.appendChild(grp);
   });
@@ -1603,9 +1776,13 @@ function render() {
     const line = document.createElementNS('http://www.w3.org/2000/svg','line');
     const src = nodes.find(n => n.id === connectingFrom);
     const srcPorts = getPorts(src);
-    const p = connectingFromPort
+    let p = connectingFromPort
       ? srcPorts.find(pt => pt.id === connectingFromPort)
       : closestPort(src, connectingTemp.x, connectingTemp.y);
+    // For parallel line-ports, use the stored attach X
+    if (p && p.isLine && connectingFromPortX !== null) {
+      p = { ...p, px: Math.max(src.x, Math.min(connectingFromPortX, src.x + src.w)) };
+    }
 
     // Snap end: if we have a snap target, line tip goes to that port
     const endX = snapTarget ? snapTarget.port.px : connectingTemp.x;
@@ -1902,7 +2079,7 @@ function updateProps() {
     // Show paramA control for all parameterised nodes
     const paramAGroup = document.getElementById('propParamAGroup');
     const paramAHint  = document.getElementById('propParamAHint');
-    const paramATypes = ['start','process','decision','io','connector','prepare','loop_start','loop_end','subprogram','comment'];
+    const paramATypes = ['start','process','decision','io','connector','prepare','loop_start','loop_end','subprogram','comment','parallel'];
     const paramAHints = {
       start:      'b\u00a0=\u00a01.5a\u00a0·\u00a0h\u00a0=\u00a00.5a\u00a0·\u00a0rx\u00a0=\u00a00.25a',
       process:    'h\u00a0=\u00a0a\u00a0·\u00a0b\u00a0=\u00a01.5a',
@@ -1914,6 +2091,7 @@ function updateProps() {
       loop_end:   'h\u00a0=\u00a0a\u00a0·\u00a0b\u00a0=\u00a01.5a\u00a0·\u00a0выступ\u00a0=\u00a00.25a',
       subprogram: 'h\u00a0=\u00a0a\u00a0·\u00a0b\u00a0=\u00a01.5a\u00a0·\u00a0полосы\u00a0=\u00a00.15a',
       comment:    'h\u00a0=\u00a0a',
+      parallel:   'ширина\u00a0=\u00a0b\u00a0·\u00a0толщина\u00a0=\u00a0по\u00a0линии',
     };
     // Show "Edit points" button only for custom type
     const editPolyBtn = document.getElementById('btnEditPolygon');
@@ -2063,6 +2241,11 @@ function applyParamA(node, val) {
       // diameter = 0.5a → w = h = 0.5a
       node.w = val * 0.5;
       node.h = val * 0.5;
+      break;
+    case 'parallel':
+      // ГОСТ: b = 1.5a (ширина), gap между линиями ≈ 0.2a
+      node.w = val * 1.5;
+      node.h = Math.max(val * 0.2, 16);
       break;
   }
 }
@@ -2281,6 +2464,28 @@ function isOverDeleteZone(clientX, clientY) {
 svg.addEventListener('mousemove', e => {
   const pt = svgPoint(e);
 
+  // Parallel width resize
+  if (draggingParallelResize) {
+    const node = nodes.find(n => n.id === draggingParallelResize.nodeId);
+    if (node) {
+      const dx = pt.x - draggingParallelResize.startX;
+      if (draggingParallelResize.side === 'right') {
+        node.w = Math.max(40, draggingParallelResize.startNodeW + dx);
+      } else {
+        // left handle: move x and shrink w
+        const newW = Math.max(40, draggingParallelResize.startNodeW - dx);
+        node.x = draggingParallelResize.startNodeX + (draggingParallelResize.startNodeW - newW);
+        node.w = newW;
+      }
+      // Recompute connected edges routing
+      edges.forEach(ed => {
+        if (ed.from === node.id || ed.to === node.id) ed.segOffsets = {};
+      });
+      render();
+    }
+    return;
+  }
+
   // Polygon drawing mode: track cursor
   if (polygonDrawMode) {
     let snapped = { x: pt.x, y: pt.y };
@@ -2394,10 +2599,20 @@ svg.addEventListener('mousemove', e => {
     let bestSnap = null, bestDist = Infinity;
     nodes.forEach(n => {
       if (n.id === connectingFrom || n.type === 'text') return;
-      // Distance to node bounding box (nearest point on box perimeter/interior)
-      const cx = Math.max(n.x, Math.min(pt.x, n.x + n.w));
-      const cy = Math.max(n.y, Math.min(pt.y, n.y + n.h));
-      const dist = Math.hypot(pt.x - cx, pt.y - cy);
+      let dist;
+      if (n.type === 'parallel') {
+        // For parallel: snap only when cursor is within SNAP_SVG of one of the two lines
+        const ly1 = n.y + n.h * 0.25;
+        const ly2 = n.y + n.h * 0.75;
+        const inXRange = pt.x >= n.x - SNAP_SVG && pt.x <= n.x + n.w + SNAP_SVG;
+        if (!inXRange) return;
+        dist = Math.min(Math.abs(pt.y - ly1), Math.abs(pt.y - ly2));
+      } else {
+        // Distance to node bounding box (nearest point on box perimeter/interior)
+        const cx = Math.max(n.x, Math.min(pt.x, n.x + n.w));
+        const cy = Math.max(n.y, Math.min(pt.y, n.y + n.h));
+        dist = Math.hypot(pt.x - cx, pt.y - cy);
+      }
       if (dist < SNAP_SVG && dist < bestDist) {
         bestDist = dist;
         bestSnap = n;
@@ -2424,11 +2639,19 @@ svg.addEventListener('mousemove', e => {
   } else {
     // Proximity check: show ports when cursor is within NODE_HOVER_PAD of any node bounding box
     const NODE_HOVER_PAD = 20 / zoom;
-    const nearNode = nodes.find(n =>
-      n.type !== 'text' &&
-      pt.x >= n.x - NODE_HOVER_PAD && pt.x <= n.x + n.w + NODE_HOVER_PAD &&
-      pt.y >= n.y - NODE_HOVER_PAD && pt.y <= n.y + n.h + NODE_HOVER_PAD
-    );
+    const LINE_SNAP_PAD = 8 / zoom; // for parallel: must be near an actual line
+    const nearNode = nodes.find(n => {
+      if (n.type === 'text') return false;
+      if (n.type === 'parallel') {
+        // Only activate port mode when cursor is very close to one of the two lines
+        const ly1 = n.y + n.h * 0.25;
+        const ly2 = n.y + n.h * 0.75;
+        const inXRange = pt.x >= n.x - LINE_SNAP_PAD && pt.x <= n.x + n.w + LINE_SNAP_PAD;
+        return inXRange && (Math.abs(pt.y - ly1) < LINE_SNAP_PAD || Math.abs(pt.y - ly2) < LINE_SNAP_PAD);
+      }
+      return pt.x >= n.x - NODE_HOVER_PAD && pt.x <= n.x + n.w + NODE_HOVER_PAD &&
+             pt.y >= n.y - NODE_HOVER_PAD && pt.y <= n.y + n.h + NODE_HOVER_PAD;
+    });
     const newHoveredNodeId = nearNode ? nearNode.id : null;
     const newHoveredPort = null;
     if (newHoveredNodeId !== hoveredNodeId || hoveredPort !== null) {
@@ -2469,6 +2692,23 @@ svg.addEventListener('mousedown', e => {
 
   const target = e.target;
 
+  // Parallel resize handle drag
+  const parallelResizeEl = target.closest('[data-kind="parallelResize"]');
+  if (parallelResizeEl) {
+    const nodeId = parallelResizeEl.dataset.nodeId;
+    const side   = parallelResizeEl.dataset.side;
+    const node   = nodes.find(n => n.id === nodeId);
+    if (node) {
+      saveHistory();
+      const pt0 = svgPoint(e);
+      draggingParallelResize = { nodeId, side, startX: pt0.x, startNodeX: node.x, startNodeW: node.w };
+      selectedId = nodeId;
+      selectedIds.clear(); selectedIds.add(nodeId);
+      render(); updateProps();
+    }
+    e.stopPropagation(); return;
+  }
+
   // Segment handle drag
   const segHandleEl = target.closest('[data-kind="seghandle"]');
   if (segHandleEl) {
@@ -2487,15 +2727,19 @@ svg.addEventListener('mousedown', e => {
   if (target.dataset.kind === 'port') {
     const clickedNodeId = target.dataset.nodeId;
     const clickedPortId = target.dataset.portId;
+    const clickedNode = nodes.find(n => n.id === clickedNodeId);
 
     // Check if there's already an incoming edge to this port
-    const incomingEdge = edges.find(ed => ed.to === clickedNodeId && ed.toPort === clickedPortId);
+    const incomingEdge = clickedNode && clickedNode.type !== 'parallel'
+      ? edges.find(ed => ed.to === clickedNodeId && ed.toPort === clickedPortId)
+      : null;
 
     if (incomingEdge) {
       // Hijack: take control of that existing edge — remove it and start dragging from its source
       edges = edges.filter(ed => ed.id !== incomingEdge.id);
       connectingFrom = incomingEdge.from;
       connectingFromPort = incomingEdge.fromPort;
+      connectingFromPortX = incomingEdge.fromPortX !== undefined ? incomingEdge.fromPortX : null;
       connectingTemp = svgPoint(e);
       // Highlight the hijacked source node so user knows which edge they grabbed
       selectedId = null;
@@ -2503,6 +2747,9 @@ svg.addEventListener('mousedown', e => {
     } else {
       connectingFrom = clickedNodeId;
       connectingFromPort = clickedPortId;
+      // For parallel line-ports, store the X where user clicked
+      const pt0 = svgPoint(e);
+      connectingFromPortX = (clickedPortId === 'tline' || clickedPortId === 'bline') ? pt0.x : null;
       connectingTemp = svgPoint(e);
     }
     e.stopPropagation(); return;
@@ -2560,6 +2807,13 @@ svg.addEventListener('mousedown', e => {
 });
 
 svg.addEventListener('mouseup', e => {
+  // End parallel resize
+  if (draggingParallelResize) {
+    draggingParallelResize = null;
+    render(); updateProps();
+    return;
+  }
+
   // End segment drag
   if (draggingSegment) {
     draggingSegment = null;
@@ -2617,40 +2871,57 @@ svg.addEventListener('mouseup', e => {
       const toNode = snapTarget.node;
       const toPort = snapTarget.port;
       saveHistory();
-      edges = edges.filter(ed => !(
-        (ed.from === connectingFrom && ed.fromPort === connectingFromPort) ||
-        (ed.to === toNode.id && ed.toPort === toPort.id) ||
-        (ed.to === connectingFrom && ed.toPort === connectingFromPort) ||
-        (ed.from === toNode.id && ed.fromPort === toPort.id)
-      ));
-      edges.push({ id:`e${edgeIdCounter++}`, from:connectingFrom, fromPort:connectingFromPort, to:toNode.id, toPort:toPort.id, label:'' });
+      const srcNode0 = nodes.find(n => n.id === connectingFrom);
+      const isParallelSrc = srcNode0 && srcNode0.type === 'parallel';
+      const isParallelDst = toNode.type === 'parallel';
+      // For parallel nodes, allow multiple edges (no port dedup)
+      if (!isParallelSrc && !isParallelDst) {
+        edges = edges.filter(ed => !(
+          (ed.from === connectingFrom && ed.fromPort === connectingFromPort) ||
+          (ed.to === toNode.id && ed.toPort === toPort.id) ||
+          (ed.to === connectingFrom && ed.toPort === connectingFromPort) ||
+          (ed.from === toNode.id && ed.fromPort === toPort.id)
+        ));
+      }
+      edges.push({ id:`e${edgeIdCounter++}`, from:connectingFrom, fromPort:connectingFromPort, fromPortX: connectingFromPortX !== null ? connectingFromPortX : undefined, to:toNode.id, toPort:toPort.id, toPortX: toPort.isLine ? toPort.px : undefined, label:'' });
       updateStatus();
-      connectingFrom = null; connectingFromPort = null; connectingTemp = null; snapTarget = null; hoveredNodeId = null; hoveredPort = null;
+      connectingFrom = null; connectingFromPort = null; connectingFromPortX = null; connectingTemp = null; snapTarget = null; hoveredNodeId = null; hoveredPort = null;
       render(); return;
     }
 
     // 2) Precise geometric hit (original behaviour, wider PAD)
     const PAD = 12;
-    const targetNode = nodes.find(n =>
-      n.id !== connectingFrom &&
-      pt.x >= n.x - PAD && pt.x <= n.x + n.w + PAD &&
-      pt.y >= n.y - PAD && pt.y <= n.y + n.h + PAD
-    );
+    const targetNode = nodes.find(n => {
+      if (n.id === connectingFrom) return false;
+      if (n.type === 'parallel') {
+        // Only accept drop if cursor is within PAD of one of the lines
+        const ly1 = n.y + n.h * 0.25;
+        const ly2 = n.y + n.h * 0.75;
+        const inXRange = pt.x >= n.x - PAD && pt.x <= n.x + n.w + PAD;
+        return inXRange && (Math.abs(pt.y - ly1) < PAD || Math.abs(pt.y - ly2) < PAD);
+      }
+      return pt.x >= n.x - PAD && pt.x <= n.x + n.w + PAD &&
+             pt.y >= n.y - PAD && pt.y <= n.y + n.h + PAD;
+    });
 
     if (targetNode) {
       const srcNode = nodes.find(n => n.id === connectingFrom);
       const srcCenter = srcNode ? getNodeCenter(srcNode) : { x: pt.x, y: pt.y };
       const toPort = getBestToPort(targetNode, srcCenter, pt);
       saveHistory();
-      edges = edges.filter(ed => !(
-        (ed.from === connectingFrom && ed.fromPort === connectingFromPort) ||
-        (ed.to === targetNode.id && ed.toPort === toPort.id) ||
-        (ed.to === connectingFrom && ed.toPort === connectingFromPort) ||
-        (ed.from === targetNode.id && ed.fromPort === toPort.id)
-      ));
-      edges.push({ id:`e${edgeIdCounter++}`, from:connectingFrom, fromPort:connectingFromPort, to:targetNode.id, toPort:toPort.id, label:'' });
+      const isParallelSrc2 = srcNode && srcNode.type === 'parallel';
+      const isParallelDst2 = targetNode.type === 'parallel';
+      if (!isParallelSrc2 && !isParallelDst2) {
+        edges = edges.filter(ed => !(
+          (ed.from === connectingFrom && ed.fromPort === connectingFromPort) ||
+          (ed.to === targetNode.id && ed.toPort === toPort.id) ||
+          (ed.to === connectingFrom && ed.toPort === connectingFromPort) ||
+          (ed.from === targetNode.id && ed.fromPort === toPort.id)
+        ));
+      }
+      edges.push({ id:`e${edgeIdCounter++}`, from:connectingFrom, fromPort:connectingFromPort, fromPortX: connectingFromPortX !== null ? connectingFromPortX : undefined, to:targetNode.id, toPort:toPort.id, toPortX: toPort.isLine ? toPort.px : undefined, label:'' });
       updateStatus();
-      connectingFrom = null; connectingFromPort = null; connectingTemp = null; snapTarget = null; hoveredNodeId = null; hoveredPort = null;
+      connectingFrom = null; connectingFromPort = null; connectingFromPortX = null; connectingTemp = null; snapTarget = null; hoveredNodeId = null; hoveredPort = null;
       render(); return;
     }
 
@@ -2664,21 +2935,33 @@ svg.addEventListener('mouseup', e => {
       const srcCenter2 = srcNode2 ? getNodeCenter(srcNode2) : { x: pt.x, y: pt.y };
       const toPort = getBestToPort(toNode, srcCenter2, pt);
       saveHistory();
-      edges = edges.filter(ed => !(
-        (ed.from === connectingFrom && ed.fromPort === connectingFromPort) ||
-        (ed.to === toId && ed.toPort === toPort.id) ||
-        (ed.to === connectingFrom && ed.toPort === connectingFromPort) ||
-        (ed.from === toId && ed.fromPort === toPort.id)
-      ));
-      edges.push({ id:`e${edgeIdCounter++}`, from:connectingFrom, fromPort:connectingFromPort, to:toId, toPort:toPort.id, label:'' });
+      const isParallelSrc3 = srcNode2 && srcNode2.type === 'parallel';
+      const isParallelDst3 = toNode && toNode.type === 'parallel';
+      if (!isParallelSrc3 && !isParallelDst3) {
+        edges = edges.filter(ed => !(
+          (ed.from === connectingFrom && ed.fromPort === connectingFromPort) ||
+          (ed.to === toId && ed.toPort === toPort.id) ||
+          (ed.to === connectingFrom && ed.toPort === connectingFromPort) ||
+          (ed.from === toId && ed.fromPort === toPort.id)
+        ));
+      }
+      edges.push({ id:`e${edgeIdCounter++}`, from:connectingFrom, fromPort:connectingFromPort, fromPortX: connectingFromPortX !== null ? connectingFromPortX : undefined, to:toId, toPort:toPort.id, toPortX: toPort.isLine ? toPort.px : undefined, label:'' });
       updateStatus();
-      connectingFrom = null; connectingFromPort = null; connectingTemp = null; snapTarget = null; hoveredNodeId = null; hoveredPort = null;
+      connectingFrom = null; connectingFromPort = null; connectingFromPortX = null; connectingTemp = null; snapTarget = null; hoveredNodeId = null; hoveredPort = null;
       render(); return;
     }
 
     // Released on empty canvas — cancel
-    connectingFrom = null; connectingFromPort = null; connectingTemp = null; snapTarget = null; hoveredNodeId = null; hoveredPort = null;
+    connectingFrom = null; connectingFromPort = null; connectingFromPortX = null; connectingTemp = null; snapTarget = null; hoveredNodeId = null; hoveredPort = null;
     render();
+  }
+});
+
+// Stop parallel resize if mouse leaves the SVG
+svg.addEventListener('mouseleave', () => {
+  if (draggingParallelResize) {
+    draggingParallelResize = null;
+    render(); updateProps();
   }
 });
 
