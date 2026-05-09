@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="ru" class="dark">
+<html lang="ru">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FlowCraft — Конструктор блок-схем</title>
+<meta name="yandex-verification" content="9c3fca68e115c191" />
+<title>ГОСТФлоу — Конструктор блок-схем</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
@@ -22,9 +23,9 @@
           accent3: '#6b8aff',
           dark: {
             bg:      '#0d0f14',
-            surface: '#151820',
-            panel:   '#1a1e28',
-            border:  '#252a38',
+            surface: '#0e1220',
+            panel:   '#131828',
+            border:  '#1e2540',
           },
           light: {
             bg:      '#f0f2f7',
@@ -40,8 +41,8 @@
 <style>
   body { font-family: 'Syne', sans-serif; }
   .canvas-dots-dark {
-    background-color: #0d0f14;
-    background-image: radial-gradient(circle, #252a38 1px, transparent 1px);
+    background-color: #080a0f;
+    background-image: radial-gradient(circle, #1c2030 1px, transparent 1px);
     background-size: 24px 24px;
   }
   .canvas-dots-light {
@@ -52,6 +53,11 @@
   .canvas-dots-gost {
     background-color: #f5f5f0;
     background-image: radial-gradient(circle, #c8c8c0 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  .canvas-dots-gost-dark {
+    background-color: #252830;
+    background-image: radial-gradient(circle, #363a46 1px, transparent 1px);
     background-size: 24px 24px;
   }
   .color-swatch.active { border-color: #fff !important; }
@@ -82,23 +88,17 @@
   .dark ::-webkit-scrollbar-thumb { background: #374151; }
   .light ::-webkit-scrollbar-thumb { background: #cbd5e1; }
 
-  select option { background: #1a1e28; color: #e8eaf0; }
-  .dark select option { background: #1a1e28; color: #e8eaf0; }
+  select option { background: #131828; color: #e8eaf0; }
+  .dark select option { background: #131828; color: #e8eaf0; }
   html:not(.dark) select option { background: #f5f7fb; color: #1a202c; }
   select:disabled, input:disabled {
     opacity: 0.45;
     cursor: not-allowed;
   }
-  #inlineEditor {
-    pointer-events: auto;
-  }
-  #inlineEditorText {
-    caret-color: #4fffb0;
-    border-radius: 3px;
-    box-shadow: 0 0 0 2px #4fffb0, 0 2px 16px rgba(79,255,176,0.18);
-  }
-  #inlineEditorText:focus {
-    outline: none;
+  /* Prevent browser text selection during drag/rubber-band */
+  #canvas, #canvasWrap {
+    user-select: none;
+    -webkit-user-select: none;
   }
 </style>
 </head>
@@ -107,7 +107,7 @@
 <!-- HEADER -->
 <header class="flex items-center justify-between px-5 py-2.5 dark:bg-dark-surface bg-light-surface dark:border-dark-border border-light-border border-b z-50 flex-shrink-0">
   <div class="text-lg font-black tracking-tight text-accent font-syne">
-    Flow<span class="dark:text-gray-500 text-gray-400">Craft</span>
+    ГОСТ<span class="dark:text-gray-500 text-gray-400">Флоу</span>
   </div>
   <div class="flex items-center gap-2 flex-wrap">
     <button class="btn font-mono text-xs px-3.5 py-1.5 rounded-md dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-700 cursor-pointer transition-all hover:border-accent hover:text-accent" id="btnUndo" title="Ctrl+Z">↩ Отмена</button>
@@ -124,7 +124,7 @@
     <div class="flex items-center gap-1.5 ml-1">
       <span class="text-xs dark:text-gray-500 text-gray-400 select-none">☀</span>
       <label class="theme-toggle">
-        <input type="checkbox" id="themeToggle" checked>
+        <input type="checkbox" id="themeToggle">
         <div class="theme-toggle-track">
           <div class="theme-toggle-thumb" id="themeThumb">🌙</div>
         </div>
@@ -139,7 +139,7 @@
 
     <!-- Shapes -->
     <div class="px-3 pt-3.5 pb-2 dark:border-dark-border border-light-border border-b">
-      <div class="text-[9px] font-semibold tracking-widest uppercase dark:text-gray-500 text-gray-400 mb-2.5">Фигуры</div>
+      <div class="text-[9px] font-semibold tracking-widest uppercase dark:text-gray-500 text-gray-400 mb-2.5">Фигуры программы</div>
       <div class="flex flex-col gap-1.5" id="nodePalette">
 
         <div class="palette-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg dark:border-dark-border border-light-border border cursor-grab transition-all text-xs font-semibold dark:hover:border-accent hover:border-accent dark:text-gray-200 text-gray-700 hover:translate-x-0.5 select-none" draggable="true" data-type="start">
@@ -182,12 +182,28 @@
           Соединитель
         </div>
 
-        <div class="palette-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg dark:border-dark-border border-light-border border cursor-grab transition-all text-xs font-semibold dark:hover:border-accent hover:border-accent dark:text-gray-200 text-gray-700 hover:translate-x-0.5 select-none" draggable="true" data-type="for">
+        <div class="palette-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg dark:border-dark-border border-light-border border cursor-grab transition-all text-xs font-semibold dark:hover:border-accent hover:border-accent dark:text-gray-200 text-gray-700 hover:translate-x-0.5 select-none" draggable="true" data-type="prepare">
           <div class="w-7 h-5 flex items-center justify-center flex-shrink-0">
-            <svg width="28" height="20" viewBox="0 0 28 20" class="dark:hidden"><polygon points="5,10 9,2 19,2 23,10 19,18 9,18" fill="#d1fae5" stroke="#34d399" stroke-width="1.5"/></svg>
-            <svg width="28" height="20" viewBox="0 0 28 20" class="hidden dark:block"><polygon points="5,10 9,2 19,2 23,10 19,18 9,18" fill="#0d2b20" stroke="#34d399" stroke-width="1.5"/></svg>
+            <svg width="28" height="20" viewBox="0 0 28 20" class="dark:hidden"><polygon points="5,1 23,1 27,10 23,19 5,19 1,10" fill="#d1fae5" stroke="#34d399" stroke-width="1.5"/></svg>
+            <svg width="28" height="20" viewBox="0 0 28 20" class="hidden dark:block"><polygon points="5,1 23,1 27,10 23,19 5,19 1,10" fill="#0d2b20" stroke="#34d399" stroke-width="1.5"/></svg>
           </div>
-          Цикл for
+          Подготовка
+        </div>
+
+        <div class="palette-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg dark:border-dark-border border-light-border border cursor-grab transition-all text-xs font-semibold dark:hover:border-accent hover:border-accent dark:text-gray-200 text-gray-700 hover:translate-x-0.5 select-none" draggable="true" data-type="loop_start">
+          <div class="w-7 h-5 flex items-center justify-center flex-shrink-0">
+            <svg width="28" height="20" viewBox="0 0 28 20" class="dark:hidden"><polygon points="1,1 27,1 27,14 14,19 1,14" fill="#cffafe" stroke="#67e8f9" stroke-width="1.5"/></svg>
+            <svg width="28" height="20" viewBox="0 0 28 20" class="hidden dark:block"><polygon points="1,1 27,1 27,14 14,19 1,14" fill="#0d2b2b" stroke="#67e8f9" stroke-width="1.5"/></svg>
+          </div>
+          Начало цикла
+        </div>
+
+        <div class="palette-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg dark:border-dark-border border-light-border border cursor-grab transition-all text-xs font-semibold dark:hover:border-accent hover:border-accent dark:text-gray-200 text-gray-700 hover:translate-x-0.5 select-none" draggable="true" data-type="loop_end">
+          <div class="w-7 h-5 flex items-center justify-center flex-shrink-0">
+            <svg width="28" height="20" viewBox="0 0 28 20" class="dark:hidden"><polygon points="1,6 14,1 27,6 27,19 1,19" fill="#cffafe" stroke="#67e8f9" stroke-width="1.5"/></svg>
+            <svg width="28" height="20" viewBox="0 0 28 20" class="hidden dark:block"><polygon points="1,6 14,1 27,6 27,19 1,19" fill="#0d2b2b" stroke="#67e8f9" stroke-width="1.5"/></svg>
+          </div>
+          Конец цикла
         </div>
 
         <div class="palette-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg dark:border-dark-border border-light-border border cursor-grab transition-all text-xs font-semibold dark:hover:border-accent hover:border-accent dark:text-gray-200 text-gray-700 hover:translate-x-0.5 select-none" draggable="true" data-type="subprogram">
@@ -198,39 +214,43 @@
           Подпрограмма
         </div>
 
-        <div class="palette-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg dark:border-dark-border border-light-border border cursor-grab transition-all text-xs font-semibold dark:hover:border-accent hover:border-accent dark:text-gray-200 text-gray-700 hover:translate-x-0.5 select-none" draggable="true" data-type="database">
+        <div class="palette-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg dark:border-dark-border border-light-border border cursor-grab transition-all text-xs font-semibold dark:hover:border-accent hover:border-accent dark:text-gray-200 text-gray-700 hover:translate-x-0.5 select-none" draggable="true" data-type="parallel">
           <div class="w-7 h-5 flex items-center justify-center flex-shrink-0">
-            <svg width="28" height="20" viewBox="0 0 28 20" class="dark:hidden"><ellipse cx="14" cy="5" rx="10" ry="4" fill="#fce7f3" stroke="#f472b6" stroke-width="1.5"/><rect x="4" y="5" width="20" height="10" fill="#fce7f3" stroke="none"/><line x1="4" y1="5" x2="4" y2="15" stroke="#f472b6" stroke-width="1.5"/><line x1="24" y1="5" x2="24" y2="15" stroke="#f472b6" stroke-width="1.5"/><path d="M4,9 Q14,13 24,9" fill="none" stroke="#f472b6" stroke-width="1.5"/><ellipse cx="14" cy="15" rx="10" ry="4" fill="#fce7f3" stroke="#f472b6" stroke-width="1.5"/></svg>
-            <svg width="28" height="20" viewBox="0 0 28 20" class="hidden dark:block"><ellipse cx="14" cy="5" rx="10" ry="4" fill="#2b0d20" stroke="#f472b6" stroke-width="1.5"/><rect x="4" y="5" width="20" height="10" fill="#2b0d20" stroke="none"/><line x1="4" y1="5" x2="4" y2="15" stroke="#f472b6" stroke-width="1.5"/><line x1="24" y1="5" x2="24" y2="15" stroke="#f472b6" stroke-width="1.5"/><path d="M4,9 Q14,13 24,9" fill="none" stroke="#f472b6" stroke-width="1.5"/><ellipse cx="14" cy="15" rx="10" ry="4" fill="#2b0d20" stroke="#f472b6" stroke-width="1.5"/></svg>
+            <svg width="28" height="20" viewBox="0 0 28 20"><line x1="1" y1="7" x2="27" y2="7" stroke="#4fffb0" stroke-width="1.8"/><line x1="1" y1="13" x2="27" y2="13" stroke="#4fffb0" stroke-width="1.8"/></svg>
           </div>
-          База данных
+          Параллельно
         </div>
 
-        <div class="palette-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg dark:border-dark-border border-light-border border cursor-grab transition-all text-xs font-semibold dark:hover:border-accent hover:border-accent dark:text-gray-200 text-gray-700 hover:translate-x-0.5 select-none" draggable="true" data-type="document">
+        <div class="palette-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg dark:border-dark-border border-light-border border cursor-grab transition-all text-xs font-semibold dark:hover:border-accent hover:border-accent dark:text-gray-200 text-gray-700 hover:translate-x-0.5 select-none" draggable="true" data-type="text">
           <div class="w-7 h-5 flex items-center justify-center flex-shrink-0">
-            <svg width="28" height="20" viewBox="0 0 28 20" class="dark:hidden"><path d="M1,1 L27,1 L27,15 Q21,20 14,15 Q7,10 1,15 Z" fill="#ffedd5" stroke="#fb923c" stroke-width="1.5"/></svg>
-            <svg width="28" height="20" viewBox="0 0 28 20" class="hidden dark:block"><path d="M1,1 L27,1 L27,15 Q21,20 14,15 Q7,10 1,15 Z" fill="#2b1a0d" stroke="#fb923c" stroke-width="1.5"/></svg>
+            <span style="font-size:13px;font-weight:700;color:#374151;font-family:serif;line-height:1">T</span>
           </div>
-          Документ
-        </div>
-
-        <div class="palette-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg dark:border-dark-border border-light-border border cursor-grab transition-all text-xs font-semibold dark:hover:border-accent hover:border-accent dark:text-gray-200 text-gray-700 hover:translate-x-0.5 select-none" draggable="true" data-type="manual">
-          <div class="w-7 h-5 flex items-center justify-center flex-shrink-0">
-            <svg width="28" height="20" viewBox="0 0 28 20" class="dark:hidden"><polygon points="5,1 27,1 27,19 1,19" fill="#fae8ff" stroke="#e879f9" stroke-width="1.5"/></svg>
-            <svg width="28" height="20" viewBox="0 0 28 20" class="hidden dark:block"><polygon points="5,1 27,1 27,19 1,19" fill="#250d2b" stroke="#e879f9" stroke-width="1.5"/></svg>
-          </div>
-          Ввод вручную
+          Текст
         </div>
 
         <div class="palette-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg dark:border-dark-border border-light-border border cursor-grab transition-all text-xs font-semibold dark:hover:border-accent hover:border-accent dark:text-gray-200 text-gray-700 hover:translate-x-0.5 select-none" draggable="true" data-type="comment">
           <div class="w-7 h-5 flex items-center justify-center flex-shrink-0">
-            <svg width="28" height="20" viewBox="0 0 28 20" class="dark:hidden"><rect x="1" y="1" width="20" height="18" rx="2" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/><line x1="21" y1="6" x2="27" y2="6" stroke="#86efac" stroke-width="1.5"/><line x1="21" y1="14" x2="27" y2="14" stroke="#86efac" stroke-width="1.5"/><line x1="27" y1="6" x2="27" y2="14" stroke="#86efac" stroke-width="1.5"/></svg>
-            <svg width="28" height="20" viewBox="0 0 28 20" class="hidden dark:block"><rect x="1" y="1" width="20" height="18" rx="2" fill="#0d2b14" stroke="#86efac" stroke-width="1.5"/><line x1="21" y1="6" x2="27" y2="6" stroke="#86efac" stroke-width="1.5"/><line x1="21" y1="14" x2="27" y2="14" stroke="#86efac" stroke-width="1.5"/><line x1="27" y1="6" x2="27" y2="14" stroke="#86efac" stroke-width="1.5"/></svg>
+            <svg width="28" height="20" viewBox="0 0 28 20" class="dark:hidden"><line x1="12" y1="1" x2="5" y2="1" stroke="#86efac" stroke-width="1.5"/><line x1="5" y1="1" x2="5" y2="19" stroke="#86efac" stroke-width="1.5"/><line x1="5" y1="19" x2="12" y2="19" stroke="#86efac" stroke-width="1.5"/></svg>
+            <svg width="28" height="20" viewBox="0 0 28 20" class="hidden dark:block"><line x1="12" y1="1" x2="5" y2="1" stroke="#86efac" stroke-width="1.5"/><line x1="5" y1="1" x2="5" y2="19" stroke="#86efac" stroke-width="1.5"/><line x1="5" y1="19" x2="12" y2="19" stroke="#86efac" stroke-width="1.5"/></svg>
           </div>
           Комментарий
         </div>
 
       </div>
+    </div>
+
+    <!-- Custom polygon -->
+    <div class="px-3 pt-3 pb-3 dark:border-dark-border border-light-border border-t">
+      <div class="text-[9px] font-semibold tracking-widest uppercase dark:text-gray-500 text-gray-400 mb-2">Произвольная</div>
+      <button id="paletteCustomShape"
+        class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg dark:border-dark-border border-light-border border cursor-pointer transition-all text-xs font-semibold dark:text-gray-200 text-gray-700 select-none hover:border-accent hover:text-accent dark:bg-dark-panel bg-light-panel text-left"
+        title="Кликните, затем ставьте точки на холсте. Двойной клик или Enter — завершить.">
+        <div class="w-7 h-5 flex items-center justify-center flex-shrink-0">
+          <svg width="24" height="20" viewBox="0 0 24 20"><polygon points="12,1 22,7 18,18 6,18 2,7" fill="none" stroke="#a78bfa" stroke-width="1.5"/><circle cx="12" cy="1" r="2" fill="#a78bfa"/><circle cx="22" cy="7" r="2" fill="#a78bfa"/><circle cx="18" cy="18" r="2" fill="#a78bfa"/><circle cx="6" cy="18" r="2" fill="#a78bfa"/><circle cx="2" cy="7" r="2" fill="#a78bfa"/></svg>
+        </div>
+        <span id="paletteCustomLabel">✏ Нарисовать</span>
+      </button>
+      <div class="mt-1.5 font-mono text-[9px] dark:text-gray-500 text-gray-400 leading-[1.7]">Клик → точки<br>2×клик → готово<br>Esc → отмена</div>
     </div>
 
     <!-- Tips -->
@@ -241,10 +261,17 @@
         • Клик — выбор<br>
         • Hover → порт → стрелка<br>
         • 🟡 порт — перенаправить<br>
-        • Del — удалить<br>
+        • Del / Backspace — удалить<br>
+        • Ctrl+C/X/V — копировать<br>
+        • Ctrl+D — дублировать<br>
+        • Ctrl+A — выделить всё<br>
+        • Ctrl+Z — отмена<br>
+        • Ctrl+Y / Ctrl+Shift+Z — повтор<br>
+        • ←↑→↓ — сдвиг (Shift×10)<br>
+        • ПКМ — контекст. меню<br>
         • Колесо — масштаб<br>
         • ПКМ+тащи — панорама<br>
-        • Ctrl+Z/Y — история
+        • <span class="text-accent">Параллельно</span>: клик в центр — выбор/перемещение; hover линии → стрелка
       </div>
     </div>
   </div>
@@ -259,9 +286,14 @@
         <marker id="arrowhead-active" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
           <polygon points="0 0, 10 3.5, 0 7" fill="#4fffb0"/>
         </marker>
-        <filter id="glow">
-          <feGaussianBlur stdDeviation="3" result="blur"/>
-          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        <marker id="arrowhead-gost" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#000000"/>
+        </marker>
+        <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+          <feFlood flood-color="#4fffb0" flood-opacity="1" result="color"/>
+          <feComposite in="color" in2="SourceGraphic" operator="in" result="coloredBlur"/>
+          <feGaussianBlur in="coloredBlur" stdDeviation="5" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
       </defs>
       <g id="canvasGroup"></g>
@@ -275,11 +307,6 @@
     </div>
 
     <canvas id="minimap" width="140" height="90" class="absolute bottom-2 right-2 rounded-md opacity-85 dark:border-dark-border border-light-border border dark:bg-dark-surface bg-light-surface"></canvas>
-    <!-- Inline text editor overlay -->
-    <div id="inlineEditor" style="display:none;position:absolute;z-index:200;pointer-events:auto;">
-      <div id="inlineEditorText" contenteditable="true"
-        style="outline:none;min-width:40px;min-height:16px;text-align:center;white-space:pre;border:none;background:transparent;padding:2px 4px;line-height:1.3;cursor:text;"></div>
-    </div>
   </div>
 
   <!-- PROPS PANEL -->
@@ -306,7 +333,7 @@
       <div id="propsBody" class="px-3.5 py-3.5 flex flex-col gap-3" style="display:none">
 
         <!-- Text -->
-        <div>
+        <div id="propTextGroup">
           <label class="block text-[10px] font-semibold tracking-wide uppercase dark:text-gray-500 text-gray-400 mb-1">Текст</label>
           <textarea id="propText" rows="3"
             class="w-full dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-800 px-2.5 py-1.5 rounded-md font-mono text-[11px] outline-none resize-y transition-colors focus:border-accent"></textarea>
@@ -317,31 +344,38 @@
           <label class="block text-[10px] font-semibold tracking-wide uppercase dark:text-gray-500 text-gray-400 mb-1">Тип формы</label>
           <select id="propType"
             class="w-full dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-800 px-2.5 py-1.5 rounded-md font-mono text-[11px] outline-none transition-colors focus:border-accent">
+            <option value="text">Текст</option>
             <option value="start">Начало/Конец</option>
             <option value="process">Процесс</option>
             <option value="decision">Условие</option>
             <option value="io">Ввод/Вывод</option>
             <option value="connector">Соединитель</option>
-            <option value="for">Цикл for</option>
+            <option value="prepare">Подготовка</option>
+            <option value="loop_start">Начало цикла</option>
+            <option value="loop_end">Конец цикла</option>
             <option value="subprogram">Подпрограмма</option>
-            <option value="database">База данных</option>
-            <option value="document">Документ</option>
-            <option value="manual">Ввод вручную</option>
             <option value="comment">Комментарий</option>
+            <option value="parallel">Параллельные действия</option>
+            <option value="custom">Произвольная</option>
           </select>
         </div>
 
-        <!-- Color swatches -->
-        <div>
-          <label class="block text-[10px] font-semibold tracking-wide uppercase dark:text-gray-500 text-gray-400 mb-1">Цвет акцента</label>
-          <div class="flex gap-1.5" id="colorSwatches">
-            <div class="color-swatch w-6 h-6 rounded-[5px] border-2 border-transparent cursor-pointer transition-transform hover:scale-110" style="background:#4fffb0" data-color="#4fffb0"></div>
-            <div class="color-swatch w-6 h-6 rounded-[5px] border-2 border-transparent cursor-pointer transition-transform hover:scale-110" style="background:#6b8aff" data-color="#6b8aff"></div>
-            <div class="color-swatch w-6 h-6 rounded-[5px] border-2 border-transparent cursor-pointer transition-transform hover:scale-110" style="background:#c084fc" data-color="#c084fc"></div>
-            <div class="color-swatch w-6 h-6 rounded-[5px] border-2 border-transparent cursor-pointer transition-transform hover:scale-110" style="background:#fbbf24" data-color="#fbbf24"></div>
-            <div class="color-swatch w-6 h-6 rounded-[5px] border-2 border-transparent cursor-pointer transition-transform hover:scale-110" style="background:#ff6b6b" data-color="#ff6b6b"></div>
-            <div class="color-swatch w-6 h-6 rounded-[5px] border-2 border-transparent cursor-pointer transition-transform hover:scale-110" style="background:#67e8f9" data-color="#67e8f9"></div>
+
+
+        <!-- Param A (block sizing) -->
+        <div id="propParamAGroup" style="display:none">
+          <label class="block text-[10px] font-semibold tracking-wide uppercase dark:text-gray-500 text-gray-400 mb-1">Параметр <span class="text-accent font-mono">a</span></label>
+          <div class="flex items-center gap-2">
+            <input type="number" id="propParamA" min="20" max="600" step="1" value="80"
+              class="w-full dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-800 px-2.5 py-1.5 rounded-md font-mono text-[11px] outline-none transition-colors focus:border-accent text-center"/>
           </div>
+          <div id="propParamAHint" class="mt-1 font-mono text-[9px] dark:text-gray-500 text-gray-400 leading-[1.7]"></div>
+        </div>
+
+        <!-- Param A mismatch warning -->
+        <div id="propParamAWarn" style="display:none;background:rgba(251,191,36,0.10);border:1px solid rgba(251,191,36,0.4);color:#d97706;border-radius:6px;padding:6px 10px;font-family:monospace;font-size:9px;line-height:1.6;gap:6px;align-items:flex-start;">
+          <span style="flex-shrink:0;font-size:11px;">⚠</span>
+          <span id="propParamAWarnText"></span>
         </div>
 
         <!-- Font Family -->
@@ -381,11 +415,57 @@
           📐 ГОСТ: по умолчанию Times New Roman
         </div>
 
+        <!-- Edge: Line Style -->
+        <div id="propEdgeStyleGroup" style="display:none">
+          <label class="block text-[10px] font-semibold tracking-wide uppercase dark:text-gray-500 text-gray-400 mb-1">Тип линии</label>
+          <select id="propEdgeLineStyle"
+            class="w-full dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-800 px-2.5 py-1.5 rounded-md font-mono text-[11px] outline-none transition-colors focus:border-accent">
+            <option value="solid">——— Сплошная</option>
+            <option value="dashed">- - - Пунктирная</option>
+            <option value="chain">·—·— Штрихпунктир</option>
+          </select>
+          <div class="mt-1 font-mono text-[9px] dark:text-gray-500 text-gray-400 leading-relaxed">По ГОСТ 2.303-68</div>
+        </div>
+
+        <!-- Edge: Arrow End -->
+        <div id="propEdgeArrowGroup" style="display:none">
+          <label class="block text-[10px] font-semibold tracking-wide uppercase dark:text-gray-500 text-gray-400 mb-1">Законцовка</label>
+          <div class="flex gap-1.5">
+            <button id="edgeArrowNone" data-arrow="none"
+              class="edge-arrow-btn flex-1 py-1.5 rounded-md font-mono text-[11px] cursor-pointer transition-all border dark:border-dark-border border-light-border dark:text-gray-200 text-gray-700 dark:hover:border-accent hover:border-accent hover:text-accent text-center">
+              ——
+            </button>
+            <button id="edgeArrowEnd" data-arrow="end"
+              class="edge-arrow-btn flex-1 py-1.5 rounded-md font-mono text-[11px] cursor-pointer transition-all border dark:border-dark-border border-light-border dark:text-gray-200 text-gray-700 dark:hover:border-accent hover:border-accent hover:text-accent text-center">
+              →
+            </button>
+          </div>
+        </div>
+
         <!-- Delete -->
         <button id="btnDeleteSelected"
           class="mt-1 w-full py-1.5 bg-transparent border border-accent2 text-accent2 rounded-md cursor-pointer font-mono text-[11px] transition-all hover:bg-accent2 hover:text-white">
           🗑 Удалить элемент
         </button>
+
+        <!-- Edit polygon points (only for custom type) -->
+        <button id="btnEditPolygon" style="display:none"
+          class="w-full py-1.5 bg-transparent border border-violet-400 text-violet-400 rounded-md cursor-pointer font-mono text-[11px] transition-all hover:bg-violet-400 hover:text-white">
+          ✏ Рисовать заново
+        </button>
+
+        <!-- Custom points editor panel -->
+        <div id="customPointsEditor" style="display:none">
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-[10px] font-semibold tracking-wide uppercase dark:text-gray-500 text-gray-400">Точки фигуры</label>
+            <button id="btnAddCustomPoint"
+              class="text-[9px] font-mono px-1.5 py-0.5 rounded border border-accent text-accent cursor-pointer hover:bg-accent hover:text-black transition-all">
+              + точка
+            </button>
+          </div>
+          <div id="customPointsList" class="flex flex-col gap-1"></div>
+          <div class="mt-1 font-mono text-[9px] dark:text-gray-500 text-gray-400 leading-relaxed">Тащи ⠿ для смены порядка</div>
+        </div>
       </div>
     </div>
 
@@ -401,29 +481,62 @@
             onclick="setDiagramStyle('gost')">
             📐 ГОСТ
           </button>
-          <button id="btnStyleStrict"
-            class="style-btn w-full py-1.5 px-2.5 rounded-md font-mono text-[11px] font-semibold cursor-pointer transition-all text-left border-2 border-transparent dark:bg-dark-panel bg-light-panel dark:text-gray-400 text-gray-500 dark:hover:border-dark-border hover:border-light-border"
-            onclick="setDiagramStyle('strict')">
-            ⌐ Строгий
-          </button>
-          <button id="btnStyleSmooth"
-            class="style-btn w-full py-1.5 px-2.5 rounded-md font-mono text-[11px] font-semibold cursor-pointer transition-all text-left border-2 border-transparent dark:bg-dark-panel bg-light-panel dark:text-gray-400 text-gray-500 dark:hover:border-dark-border hover:border-light-border"
-            onclick="setDiagramStyle('smooth')">
-            ∿ Плавный
-          </button>
         </div>
+      </div>
+
+      <!-- Глобальный параметр a -->
+      <div>
+        <div class="text-[9px] font-semibold tracking-widest uppercase dark:text-gray-500 text-gray-400 mb-2">Глобальный параметр <span class="text-accent font-mono">a</span></div>
+        <div class="flex gap-2 items-center">
+          <input type="number" id="globalParamAInput" min="20" max="600" step="1" value="80"
+            class="w-full dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-800 px-2.5 py-1.5 rounded-md font-mono text-[11px] outline-none transition-colors focus:border-accent text-center"/>
+        </div>
+        <div class="mt-1.5 font-mono text-[9px] dark:text-gray-500 text-gray-400 leading-relaxed">b&nbsp;=&nbsp;1.5a для всех фигур</div>
+        <button id="btnApplyGlobalA"
+          class="mt-2 w-full py-1.5 px-2 rounded-md font-mono text-[10px] font-semibold cursor-pointer transition-all border dark:border-dark-border border-light-border dark:text-gray-200 text-gray-700 dark:hover:border-accent hover:border-accent hover:text-accent">
+          Применить ко всем
+        </button>
       </div>
 
     </div>
   </div>
 </div>
 
-<!-- STATUS BAR -->
-<div class="px-4 py-1.5 dark:bg-dark-surface bg-light-surface dark:border-dark-border border-light-border border-t font-mono text-[10px] dark:text-gray-500 text-gray-400 flex gap-5 flex-shrink-0">
-  <div>Узлы: <span class="text-accent" id="statNodes">0</span></div>
-  <div>Связи: <span class="text-accent" id="statEdges">0</span></div>
-  <div>Масштаб: <span class="text-accent" id="statZoom">100</span>%</div>
-  <div id="statMode">Режим: <span class="text-accent">просмотр</span></div>
+<!-- STATUS BAR (contains floating sheet tabs above) -->
+<div class="dark:bg-dark-surface bg-light-surface dark:border-dark-border border-light-border border-t flex items-center flex-shrink-0" style="height:26px;position:relative;overflow:visible;">
+
+  <!-- Sheet tabs — float above the status bar, anchored to its top edge -->
+  <div id="sheetsStrip" style="
+    position:absolute;bottom:100%;left:192px;right:224px;
+    height:28px;display:flex;align-items:flex-end;padding-left:6px;
+    pointer-events:auto;overflow:hidden;
+  ">
+    <div id="sheetTabsContainer" class="flex items-end h-full gap-0 overflow-x-auto" style="scrollbar-width:none;-ms-overflow-style:none;"></div>
+    <button id="btnAddSheet" title="Новый лист"
+      class="flex-shrink-0 flex items-center justify-center font-mono text-[12px] cursor-pointer ml-1 self-center"
+      style="width:22px;height:22px;border-radius:4px;background:transparent;border:none;color:inherit;opacity:0.5;transition:opacity 0.15s;"
+      onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.5'">＋</button>
+  </div>
+
+  <div class="flex items-center gap-5 px-4 font-mono text-[10px] dark:text-gray-500 text-gray-400">
+    <div>Узлы: <span class="text-accent" id="statNodes">0</span></div>
+    <div>Связи: <span class="text-accent" id="statEdges">0</span></div>
+    <div>Масштаб: <span class="text-accent" id="statZoom">100</span>%</div>
+    <div id="statMode">Режим: <span class="text-accent">просмотр</span></div>
+  </div>
+</div>
+
+<!-- Sheet rename modal -->
+<div id="sheetRenameModal" style="display:none;position:fixed;inset:0;z-index:2000;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);">
+  <div class="dark:bg-dark-panel bg-white dark:border-dark-border border-light-border border rounded-xl p-5" style="min-width:260px;">
+    <div class="text-xs font-semibold mb-3 dark:text-gray-200 text-gray-700 font-mono uppercase tracking-wider">Переименовать лист</div>
+    <input id="sheetRenameInput" type="text" maxlength="32"
+      class="w-full dark:bg-dark-bg bg-light-bg dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-700 px-2.5 py-1.5 rounded-md font-mono text-[12px] outline-none focus:border-accent mb-3"/>
+    <div class="flex gap-2 justify-end">
+      <button id="sheetRenameCancel" class="font-mono text-xs px-3 py-1.5 rounded-md dark:bg-dark-surface bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-700 cursor-pointer hover:border-accent hover:text-accent">Отмена</button>
+      <button id="sheetRenameOk" class="font-mono text-xs px-3 py-1.5 rounded-md bg-accent text-black border border-accent font-semibold cursor-pointer hover:bg-emerald-400">OK</button>
+    </div>
+  </div>
 </div>
 
 <!-- Tooltip -->
@@ -453,9 +566,9 @@ const canvasWrap = document.getElementById('canvasWrap');
 function applyCanvasTheme() {
   const isGost = diagramStyle === 'gost';
   const dark = document.documentElement.classList.contains('dark');
-  canvasWrap.classList.remove('canvas-dots-dark', 'canvas-dots-light', 'canvas-dots-gost');
+  canvasWrap.classList.remove('canvas-dots-dark', 'canvas-dots-light', 'canvas-dots-gost', 'canvas-dots-gost-dark');
   if (isGost) {
-    canvasWrap.classList.add('canvas-dots-gost');
+    canvasWrap.classList.add(dark ? 'canvas-dots-gost-dark' : 'canvas-dots-gost');
   } else if (dark) {
     canvasWrap.classList.add('canvas-dots-dark');
   } else {
@@ -475,7 +588,10 @@ function applyTheme(dark) {
   updateMinimap();
 }
 
-themeToggle.addEventListener('change', () => applyTheme(themeToggle.checked));
+themeToggle.addEventListener('change', () => {
+  applyTheme(themeToggle.checked);
+  try { localStorage.setItem('gostflow-theme', themeToggle.checked ? 'dark' : 'light'); } catch(e) {}
+});
 
 // ============================================================
 // STATE
@@ -483,6 +599,7 @@ themeToggle.addEventListener('change', () => applyTheme(themeToggle.checked));
 let nodes = [];
 let edges = [];
 let selectedId = null;       // single selected edge id
+let globalParamA = 80;       // global GOST parameter a for all blocks
 let selectedIds = new Set(); // multi-selected node ids
 let selectionRect = null;    // { x, y, w, h } in SVG coords while rubber-band dragging
 let selectionStart = null;   // SVG point where rubber-band started
@@ -498,12 +615,26 @@ let historyIndex = -1;
 let nodeIdCounter = 1;
 let edgeIdCounter = 1;
 let hoveredPort = null;
+let hoveredNodeId = null;    // node the cursor is hovering near (for port visibility)
+let hoveredCustomPtIdx = -1; // index of the custom point hovered in the sidebar panel
+let snapTarget = null;       // { node, port } — magnetic snap candidate while drawing a connection
 let connectingTemp = null;
 let connectingFromPort = null; // port id where drag started
+let connectingFromPortX = null; // stored X for parallel line-port attach point
 let edgeStyle = "orthogonal"; // orthogonal | curved
 let diagramStyle = "gost";   // gost | strict | smooth
 // Segment dragging state
 let draggingSegment = null; // { edgeId, segIndex, axis }
+let draggingParallelResize = null; // { nodeId, side: 'left'|'right', startX, startNodeX, startNodeW }
+// Clipboard
+let clipboard = null; // { nodes: [...], edges: [...] }
+let alignSnapGuides = []; // { x1, y1, x2, y2 } lines to draw during drag
+
+// Polygon drawing state
+let polygonDrawMode = false;
+let polygonPoints = []; // [{x,y}] absolute SVG canvas coords
+let polygonCursorPt = null;
+let polygonEditNodeId = null; // id of node being re-edited
 
 // ============================================================
 // TAB SWITCHING
@@ -532,38 +663,32 @@ function switchTab(tab) {
 // DIAGRAM STYLE
 // ============================================================
 function setDiagramStyle(style) {
-  diagramStyle = style;
-  // Update edge style
-  if (style === 'smooth') { edgeStyle = 'curved'; }
-  else                    { edgeStyle = 'orthogonal'; }
+  diagramStyle = 'gost';
+  edgeStyle = 'orthogonal';
 
-  // Update button states
-  ['gost','strict','smooth'].forEach(s => {
-    const btn = document.getElementById('btnStyle' + s.charAt(0).toUpperCase() + s.slice(1));
-    if (!btn) return;
-    if (s === style) {
-      btn.className = 'style-btn w-full py-1.5 px-2.5 rounded-md font-mono text-[11px] font-semibold cursor-pointer transition-all text-left border-2 border-accent bg-transparent text-accent';
-    } else {
-      btn.className = 'style-btn w-full py-1.5 px-2.5 rounded-md font-mono text-[11px] font-semibold cursor-pointer transition-all text-left border-2 border-transparent dark:bg-dark-panel bg-light-panel dark:text-gray-400 text-gray-500 dark:hover:border-dark-border hover:border-light-border';
-    }
-  });
+  const btn = document.getElementById('btnStyleGost');
+  if (btn) {
+    btn.className = 'style-btn w-full py-1.5 px-2.5 rounded-md font-mono text-[11px] font-semibold cursor-pointer transition-all text-left border-2 border-accent bg-transparent text-accent';
+  }
   applyCanvasTheme();
   render();
   updateProps();
 }
 
 const NODE_DEFAULTS = {
-  start:      { w: 120, h: 44,  color: '#4fffb0',  label: 'Начало' },
-  process:    { w: 140, h: 54,  color: '#6b8aff',  label: 'Процесс' },
-  decision:   { w: 120, h: 70,  color: '#c084fc',  label: 'Условие?' },
-  io:         { w: 140, h: 50,  color: '#fbbf24',  label: 'Ввод/Вывод' },
-  connector:  { w: 44,  h: 44,  color: '#ff6b6b',  label: '' },
-  for:        { w: 140, h: 60,  color: '#34d399',  label: 'Цикл for' },
-  subprogram: { w: 150, h: 54,  color: '#67e8f9',  label: 'Подпрограмма' },
-  database:   { w: 100, h: 64,  color: '#f472b6',  label: 'База данных' },
-  document:   { w: 140, h: 54,  color: '#fb923c',  label: 'Документ' },
-  manual:     { w: 140, h: 54,  color: '#e879f9',  label: 'Ввод вручную' },
-  comment:    { w: 150, h: 60,  color: '#86efac',  label: 'Комментарий' },
+  text:       { w: 120,  h: 30,   color: '#000000', label: 'Текст' },
+  start:      { w: 120,  h: 40,   color: '#000000', label: 'Начало', paramA: 80 },
+  process:    { w: 120,  h: 80,   color: '#000000', label: 'Процесс',     paramA: 80 },
+  decision:   { w: 120,  h: 80,   color: '#000000', label: 'Условие?',    paramA: 80 },
+  io:         { w: 120,  h: 80,   color: '#000000', label: 'Ввод/Вывод',  paramA: 80 },
+  connector:  { w: 40,   h: 40,   color: '#000000', label: '',            paramA: 80 },
+  prepare:    { w: 120,  h: 80,   color: '#000000', label: 'Подготовка',  paramA: 80 },
+  loop_start: { w: 120,  h: 80,   color: '#000000', label: 'Начало цикла', paramA: 80 },
+  loop_end:   { w: 120,  h: 80,   color: '#000000', label: 'Конец цикла',  paramA: 80 },
+  subprogram: { w: 120,  h: 80,   color: '#000000', label: 'Подпрограмма', paramA: 80 },
+  comment:    { w: 60,   h: 80,   color: '#000000', label: 'Комментарий', paramA: 80 },
+  parallel:   { w: 120,  h: 16,   color: '#000000', label: '',            paramA: 80 },
+  custom:     { w: 120,  h: 80,   color: '#000000', label: '' },
 };
 
 // ============================================================
@@ -575,7 +700,11 @@ const tooltip = document.getElementById('tooltip');
 const minimap = document.getElementById('minimap');
 const mmCtx = minimap.getContext('2d');
 
-applyTheme(true); // start dark — called here so mmCtx is already initialized
+// Restore theme from localStorage, default = light
+const savedTheme = (() => { try { return localStorage.getItem('gostflow-theme'); } catch(e) { return null; } })();
+const startDark = savedTheme === 'dark';
+themeToggle.checked = startDark;
+applyTheme(startDark); // called here so mmCtx is already initialized
 // Apply default GOST style (buttons are in DOM by now)
 
 // ============================================================
@@ -623,26 +752,56 @@ function redo() {
 function getNodeShape(node) {
   const { x, y, w, h, type } = node;
   switch (type) {
-    case 'start':     return `<rect rx="${h/2}" ry="${h/2}" x="${x}" y="${y}" width="${w}" height="${h}"/>`;
+    case 'text':      return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="transparent" stroke="none"/>`;
+    case 'start':     { const rx = node.paramA ? node.paramA*0.25 : h/2; return `<rect rx="${rx}" ry="${rx}" x="${x}" y="${y}" width="${w}" height="${h}"/>`; }
+    // Процесс: h=a, b=1.5a → plain rect, dimensions come from node.w/node.h
     case 'process':   return `<rect rx="${edgeStyle==='orthogonal'?0:4}" x="${x}" y="${y}" width="${w}" height="${h}"/>`;
+    // Условие: h=a, b=1.5a → diamond
     case 'decision':  return `<polygon points="${x+w/2},${y} ${x+w},${y+h/2} ${x+w/2},${y+h} ${x},${y+h/2}"/>`;
-    case 'io':        return `<polygon points="${x+12},${y} ${x+w},${y} ${x+w-12},${y+h} ${x},${y+h}"/>`;
+    // Ввод/вывод: h=a, b=1.5a, сдвиг=0.25a
+    case 'io':        { const shift = node.paramA ? node.paramA*0.25 : w*0.167; return `<polygon points="${x+shift},${y} ${x+w},${y} ${x+w-shift},${y+h} ${x},${y+h}"/>`; }
+    // Соединитель: диаметр=0.5a → radius=0.25a
     case 'connector': return `<circle cx="${x+w/2}" cy="${y+h/2}" r="${w/2}"/>`;
-    // FOR loop: hexagon shape (GOST: preparation block with cut corners)
-    case 'for':       return `<polygon points="${x+16},${y} ${x+w-16},${y} ${x+w},${y+h/2} ${x+w-16},${y+h} ${x+16},${y+h} ${x},${y+h/2}"/>`;
-    // Subprogram: rectangle with vertical bars on sides
-    case 'subprogram':return `<g><rect x="${x}" y="${y}" width="${w}" height="${h}"/><line x1="${x+10}" y1="${y}" x2="${x+10}" y2="${y+h}" stroke-width="1.5"/><line x1="${x+w-10}" y1="${y}" x2="${x+w-10}" y2="${y+h}" stroke-width="1.5"/></g>`;
-    // Database: cylinder (top ellipse + body)
-    case 'database':  { const ry=10; return `<g><ellipse cx="${x+w/2}" cy="${y+ry}" rx="${w/2}" ry="${ry}"/><rect x="${x}" y="${y+ry}" width="${w}" height="${h-ry*2}"/><ellipse cx="${x+w/2}" cy="${y+h-ry}" rx="${w/2}" ry="${ry}"/></g>`; }
-    // Document: rectangle with wavy bottom
-    case 'document':  { const wv=h*0.18; return `<path d="M${x},${y} L${x+w},${y} L${x+w},${y+h-wv} Q${x+w*0.75},${y+h+wv} ${x+w/2},${y+h-wv} Q${x+w*0.25},${y+h-wv*3} ${x},${y+h-wv} Z"/>`; }
-    // Manual input: trapezoid (top shorter, rising left side)
-    case 'manual':    return `<polygon points="${x+14},${y} ${x+w},${y} ${x+w},${y+h} ${x},${y+h}"/>`;
-    // Comment: rectangle with bracket on the right side
-    case 'comment':   return `<g><rect rx="2" x="${x}" y="${y}" width="${w-16}" height="${h}"/><line x1="${x+w-16}" y1="${y+h*0.25}" x2="${x+w}" y2="${y+h*0.25}"/><line x1="${x+w}" y1="${y+h*0.25}" x2="${x+w}" y2="${y+h*0.75}"/><line x1="${x+w-16}" y1="${y+h*0.75}" x2="${x+w}" y2="${y+h*0.75}"/></g>`;
+    // Подготовка: шестиугольник h=a, b=1.5a, срез=0.25a
+    case 'prepare':   { const cut = node.paramA ? node.paramA*0.25 : w*0.167; return `<polygon points="${x+cut},${y} ${x+w-cut},${y} ${x+w},${y+h/2} ${x+w-cut},${y+h} ${x+cut},${y+h} ${x},${y+h/2}"/>`; }
+    // Граница цикла начало: h=a, b=1.5a, выступ=0.25a
+    case 'loop_start':{ const lp = node.paramA ? node.paramA*0.25 : h*0.3; return `<polygon points="${x},${y} ${x+w},${y} ${x+w},${y+h-lp} ${x+w/2},${y+h} ${x},${y+h-lp}"/>`; }
+    // Граница цикла конец: h=a, b=1.5a, выступ=0.25a
+    case 'loop_end':  { const lp = node.paramA ? node.paramA*0.25 : h*0.3; return `<polygon points="${x+w/2},${y} ${x+w},${y+lp} ${x+w},${y+h} ${x},${y+h} ${x},${y+lp}"/>`; }
+    // Подпрограмма: h=a, b=1.5a, боковые полосы=0.15a
+    case 'subprogram':{ const bar = node.paramA ? node.paramA*0.15 : w*0.1; return `<g><rect x="${x}" y="${y}" width="${w}" height="${h}"/><line x1="${x+bar}" y1="${y}" x2="${x+bar}" y2="${y+h}" stroke-width="1.5"/><line x1="${x+w-bar}" y1="${y}" x2="${x+w-bar}" y2="${y+h}" stroke-width="1.5"/></g>`; }
+    // Параллельные действия: две горизонтальные линии
+    case 'parallel': {
+      const y1 = y + h * 0.25;
+      const y2 = y + h * 0.75;
+      return `<g>
+        <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="transparent" stroke="none" class="node-hitbox"/>
+        <line x1="${x}" y1="${y1}" x2="${x+w}" y2="${y1}" stroke-width="1.8"/>
+        <line x1="${x}" y1="${y2}" x2="${x+w}" y2="${y2}" stroke-width="1.8"/>
+      </g>`;
+    }
+    // Комментарий по ГОСТ 19.003-80: скобка [ — вертикальная черта + верхний и нижний горизонтальные усы
+    case 'comment': {
+      const bw = Math.min(w * 0.3, h * 0.4); // длина усов скобки
+      return `<g>
+        <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="transparent" stroke="none" class="node-hitbox"/>
+        <line x1="${x+bw}" y1="${y}" x2="${x}" y2="${y}" stroke-width="1.5"/>
+        <line x1="${x}" y1="${y}" x2="${x}" y2="${y+h}" stroke-width="1.5"/>
+        <line x1="${x}" y1="${y+h}" x2="${x+bw}" y2="${y+h}" stroke-width="1.5"/>
+      </g>`;
+    }
+    // Произвольная фигура — polygon из нормализованных точек
+    case 'custom': {
+      const pts = node.customPoints && node.customPoints.length >= 3
+        ? node.customPoints.map(([rx, ry]) => `${x + rx*w},${y + ry*h}`).join(' ')
+        : `${x},${y+h/2} ${x+w/2},${y} ${x+w},${y+h/2} ${x+w/2},${y+h}`;
+      return `<polygon points="${pts}"/>`;
+    }
   }
 }
 function getPorts(node) {
+  // Text nodes have no connection ports
+  if (node.type === 'text') return [];
   const { x, y, w, h, type } = node;
   // For most shapes, ports are at bounding box edges (center of each side)
   // For document: wavy bottom, port should be at visual top of wave (not bottom of bbox)
@@ -673,23 +832,65 @@ function getPorts(node) {
     r = { id:'r', px: cx+r2, py: cy };
     b = { id:'b', px: cx, py: cy+r2 };
     l = { id:'l', px: cx-r2, py: cy };
-  } else if (type === 'for') {
+  } else if (type === 'prepare') {
     // Hexagon: left/right are the pointed vertices
     t = { id:'t', px: x+w/2, py: y };
     r = { id:'r', px: x+w,   py: y+h/2 };
     b = { id:'b', px: x+w/2, py: y+h };
     l = { id:'l', px: x,     py: y+h/2 };
-  } else if (type === 'manual') {
-    // Trapezoid: top is shorter but center is still w/2
-    t = { id:'t', px: x+w/2+7, py: y };
-    b = { id:'b', px: x+w/2,   py: y+h };
-    l = { id:'l', px: x+7,     py: y+h/2 };
-    r = { id:'r', px: x+w,     py: y+h/2 };
+  } else if (type === 'loop_start') {
+    // Pentagon: top flat, bottom notch. Notch at h - 0.25a from top
+    const lp = node.paramA ? node.paramA*0.25 : h*0.3;
+    t = { id:'t', px: x+w/2, py: y };
+    b = { id:'b', px: x+w/2, py: y+h };
+    l = { id:'l', px: x,     py: y+(h-lp)/2 };
+    r = { id:'r', px: x+w,   py: y+(h-lp)/2 };
+  } else if (type === 'loop_end') {
+    // Pentagon: top notch, bottom flat
+    const lp = node.paramA ? node.paramA*0.25 : h*0.3;
+    t = { id:'t', px: x+w/2, py: y };
+    b = { id:'b', px: x+w/2, py: y+h };
+    l = { id:'l', px: x,     py: y+lp+(h-lp)/2 };
+    r = { id:'r', px: x+w,   py: y+lp+(h-lp)/2 };
+  } else if (type === 'parallel') {
+    // Two line-ports: top line and bottom line.
+    // px is the center by default; actual connection point X is resolved at connect time.
+    const y1 = y + h * 0.25;
+    const y2 = y + h * 0.75;
+    return [
+      { id: 'tline', px: x + w / 2, py: y1, isLine: true, lineY: y1 },
+      { id: 'bline', px: x + w / 2, py: y2, isLine: true, lineY: y2 },
+    ];
+  } else if (type === 'comment') {
+    // Скобка [: только три порта — верх, низ, лево (на вертикальной черте)
+    t = { id:'t', px: x,     py: y };
+    b = { id:'b', px: x,     py: y+h };
+    l = { id:'l', px: x,     py: y+h/2 };
+    return [t, b, l];
+  } else if (type === 'custom') {
+    // Ports at midpoints of each polygon edge
+    const rawPts = node.customPoints && node.customPoints.length >= 3
+      ? node.customPoints.map(([rx, ry]) => [x + rx*w, y + ry*h])
+      : [[x, y+h/2],[x+w/2, y],[x+w, y+h/2],[x+w/2, y+h]];
+    const ports = rawPts.map(([px2, py2], i) => {
+      const [nx, ny] = rawPts[(i+1) % rawPts.length];
+      return { id: 'p'+i, px: (px2+nx)/2, py: (py2+ny)/2 };
+    });
+    return ports;
   }
 
   return [t, r, b, l];
 }
 function closestPort(node, tx, ty) {
+  if (node.type === 'parallel') {
+    const y1 = node.y + node.h * 0.25;
+    const y2 = node.y + node.h * 0.75;
+    const useBottom = Math.abs(ty - y2) < Math.abs(ty - y1);
+    const lineY = useBottom ? y2 : y1;
+    const lineId = useBottom ? 'bline' : 'tline';
+    const attachX = Math.max(node.x, Math.min(tx, node.x + node.w));
+    return { id: lineId, px: attachX, py: lineY, isLine: true };
+  }
   const ports = getPorts(node);
   let best = null, bd = Infinity;
   ports.forEach(p => {
@@ -704,6 +905,18 @@ function closestPort(node, tx, ty) {
 // targetNode: the destination node
 // dropPt: where user dropped the connection
 function getBestToPort(targetNode, srcCenter, dropPt) {
+  // Parallel: pick the line closest to source, attach at cursor X
+  if (targetNode.type === 'parallel') {
+    const y1 = targetNode.y + targetNode.h * 0.25;
+    const y2 = targetNode.y + targetNode.h * 0.75;
+    const useBottom = srcCenter && srcCenter.y > targetNode.y + targetNode.h / 2;
+    const lineY = useBottom ? y2 : y1;
+    const lineId = useBottom ? 'bline' : 'tline';
+    const attachX = dropPt
+      ? Math.max(targetNode.x, Math.min(dropPt.x, targetNode.x + targetNode.w))
+      : targetNode.x + targetNode.w / 2;
+    return { id: lineId, px: attachX, py: lineY, isLine: true };
+  }
   const ports = getPorts(targetNode);
   const cx = targetNode.x + targetNode.w / 2;
   const cy = targetNode.y + targetNode.h / 2;
@@ -740,6 +953,10 @@ function getBestToPort(targetNode, srcCenter, dropPt) {
   return best || ports[0];
 }
 function getPortDir(portId) {
+  if (portId === 'tline') return [0, -1];
+  if (portId === 'bline') return [0,  1];
+  if (portId && portId.startsWith('t')) return [0, -1];
+  if (portId && portId.startsWith('b')) return [0,  1];
   return { t: [0,-1], b: [0,1], l: [-1,0], r: [1,0] }[portId] || [0,1];
 }
 
@@ -757,6 +974,95 @@ function getNodeRect(node, margin) {
 // Check if a point is inside a rect
 function pointInRect(px, py, rect) {
   return px >= rect.x && px <= rect.x + rect.w && py >= rect.y && py <= rect.y + rect.h;
+}
+
+// Alignment snap during node drag.
+// dragged: the node(s) being moved (array of node objects, already at new position).
+// excludeIds: Set of node ids to skip (the dragged ones).
+// Returns { dx, dy, guides[] } — corrections to apply and lines to draw.
+function computeAlignSnap(dragged, excludeIds) {
+  const SNAP_SVG = 6 / zoom;
+  const others = nodes.filter(n => !excludeIds.has(n.id) && n.type !== 'text');
+  if (!others.length) return { dx: 0, dy: 0, guides: [] };
+
+  // Alignment anchors for each dragged node: left, center-x, right, top, center-y, bottom
+  const guides = [];
+  let bestDx = null, bestDy = null;
+  let bestDxDist = SNAP_SVG, bestDyDist = SNAP_SVG;
+
+  dragged.forEach(dn => {
+    const dnCx = dn.x + dn.w / 2, dnCy = dn.y + dn.h / 2;
+    const dnAnchorsX = [dn.x, dnCx, dn.x + dn.w];
+    const dnAnchorsY = [dn.y, dnCy, dn.y + dn.h];
+
+    others.forEach(on => {
+      const onCx = on.x + on.w / 2, onCy = on.y + on.h / 2;
+      const onAnchorsX = [on.x, onCx, on.x + on.w];
+      const onAnchorsY = [on.y, onCy, on.y + on.h];
+
+      // X alignment
+      dnAnchorsX.forEach(da => {
+        onAnchorsX.forEach(oa => {
+          const dist = Math.abs(da - oa);
+          if (dist < bestDxDist) {
+            bestDxDist = dist;
+            bestDx = oa - da;
+          }
+        });
+      });
+
+      // Y alignment
+      dnAnchorsY.forEach(da => {
+        onAnchorsY.forEach(oa => {
+          const dist = Math.abs(da - oa);
+          if (dist < bestDyDist) {
+            bestDyDist = dist;
+            bestDy = oa - da;
+          }
+        });
+      });
+    });
+  });
+
+  const dx = bestDx || 0, dy = bestDy || 0;
+
+  // Build guide lines after applying snap
+  if (dx !== 0 || dy !== 0) {
+    dragged.forEach(dn => {
+      const snappedX = dn.x + dx, snappedY = dn.y + dy;
+      const snappedCx = snappedX + dn.w / 2, snappedCy = snappedY + dn.h / 2;
+      const dnAnchorsX = [snappedX, snappedCx, snappedX + dn.w];
+      const dnAnchorsY = [snappedY, snappedCy, snappedY + dn.h];
+
+      others.forEach(on => {
+        const onCx = on.x + on.w / 2, onCy = on.y + on.h / 2;
+        const onAnchorsX = [on.x, onCx, on.x + on.w];
+        const onAnchorsY = [on.y, onCy, on.y + on.h];
+
+        dnAnchorsX.forEach(da => {
+          onAnchorsX.forEach(oa => {
+            if (Math.abs(da - oa) < 0.5) {
+              // Vertical guide line at x = oa
+              const allY = [snappedY, snappedY + dn.h, on.y, on.y + on.h];
+              guides.push({ x1: oa, y1: Math.min(...allY) - 20, x2: oa, y2: Math.max(...allY) + 20 });
+            }
+          });
+        });
+
+        dnAnchorsY.forEach(da => {
+          onAnchorsY.forEach(oa => {
+            if (Math.abs(da - oa) < 0.5) {
+              // Horizontal guide line at y = oa
+              const allX = [snappedX, snappedX + dn.w, on.x, on.x + on.w];
+              guides.push({ x1: Math.min(...allX) - 20, y1: oa, x2: Math.max(...allX) + 20, y2: oa });
+            }
+          });
+        });
+      });
+    });
+  }
+
+  return { dx, dy, guides };
 }
 
 // Check if a horizontal segment (y=py, x from xa to xb) intersects a rect
@@ -783,8 +1089,15 @@ const AVOID_MARGIN = 18; // margin around nodes for routing
 function buildOrthogonalWaypoints(edge, src, dst) {
   const srcPorts = getPorts(src);
   const dstPorts = getPorts(dst);
-  const sp = edge.fromPort ? srcPorts.find(p => p.id === edge.fromPort) || srcPorts[2] : srcPorts[2];
-  const ep = edge.toPort   ? dstPorts.find(p => p.id === edge.toPort)   || dstPorts[0] : dstPorts[0];
+  let sp = edge.fromPort ? srcPorts.find(p => p.id === edge.fromPort) || srcPorts[2] : srcPorts[2];
+  let ep = edge.toPort   ? dstPorts.find(p => p.id === edge.toPort)   || dstPorts[0] : dstPorts[0];
+  // For parallel nodes, use the stored attach X if available
+  if (sp && sp.isLine && edge.fromPortX !== undefined) {
+    sp = { ...sp, px: Math.max(src.x, Math.min(edge.fromPortX, src.x + src.w)) };
+  }
+  if (ep && ep.isLine && edge.toPortX !== undefined) {
+    ep = { ...ep, px: Math.max(dst.x, Math.min(edge.toPortX, dst.x + dst.w)) };
+  }
 
   const fd = getPortDir(sp.id);
   const td = getPortDir(ep.id);
@@ -795,9 +1108,9 @@ function buildOrthogonalWaypoints(edge, src, dst) {
   const ex = ep.px + td[0] * STUB;
   const ey = ep.py + td[1] * STUB;
 
-  // All other nodes as obstacles (exclude src and dst)
+  // All other nodes as obstacles (exclude src, dst, and text nodes — text is decorative)
   const obstacles = nodes
-    .filter(n => n.id !== src.id && n.id !== dst.id)
+    .filter(n => n.id !== src.id && n.id !== dst.id && n.type !== 'text')
     .map(n => getNodeRect(n, AVOID_MARGIN));
 
   // Also add src and dst themselves as partial obstacles (prevent re-entry)
@@ -954,8 +1267,10 @@ function getEdgePath(edge) {
   if (edgeStyle === "curved") {
     const srcPorts = getPorts(src);
     const dstPorts = getPorts(dst);
-    const sp = edge.fromPort ? srcPorts.find(p => p.id === edge.fromPort) || srcPorts[2] : srcPorts[2];
-    const ep = edge.toPort   ? dstPorts.find(p => p.id === edge.toPort)   || dstPorts[0] : dstPorts[0];
+    let sp = edge.fromPort ? srcPorts.find(p => p.id === edge.fromPort) || srcPorts[2] : srcPorts[2];
+    let ep = edge.toPort   ? dstPorts.find(p => p.id === edge.toPort)   || dstPorts[0] : dstPorts[0];
+    if (sp && sp.isLine && edge.fromPortX !== undefined) sp = { ...sp, px: Math.max(src.x, Math.min(edge.fromPortX, src.x + src.w)) };
+    if (ep && ep.isLine && edge.toPortX !== undefined)   ep = { ...ep, px: Math.max(dst.x, Math.min(edge.toPortX,   dst.x + dst.w)) };
     const fromDir = getPortDir(sp.id);
     const toDir   = getPortDir(ep.id);
     const dist = Math.sqrt((ep.px-sp.px)**2 + (ep.py-sp.py)**2);
@@ -1011,17 +1326,19 @@ function render() {
   const isGost = diagramStyle === 'gost';
 
   const edgeColor = isGost ? '#000000' : (isDark() ? '#4b5563' : '#94a3b8');
-  const labelBg   = isGost ? '#ffffff'  : (isDark() ? '#1a1e28' : '#ffffff');
+  const labelBg   = isGost ? '#ffffff'  : (isDark() ? '#131828' : '#ffffff');
   const labelFg   = isGost ? '#000000'  : (isDark() ? '#9ca3af' : '#6b7280');
   const nodeFills = isGost
-    ? { start:'#ffffff', process:'#ffffff', decision:'#ffffff', io:'#ffffff', connector:'#ffffff', for:'#ffffff', subprogram:'#ffffff', database:'#ffffff', document:'#ffffff', manual:'#ffffff', comment:'#ffffff' }
+    ? { text:'transparent', start:'#ffffff', process:'#ffffff', decision:'#ffffff', io:'#ffffff', connector:'#ffffff', for:'#ffffff', subprogram:'#ffffff', database:'#ffffff', document:'#ffffff', manual:'#ffffff', comment:'#ffffff', parallel:'#ffffff', custom:'#ffffff' }
     : (isDark()
-      ? { start:'#0f2b1a', process:'#0d1a35', decision:'#1a0d2b', io:'#2b1f0a', connector:'#2b0d0d', for:'#0d2b20', subprogram:'#0d2b2b', database:'#2b0d20', document:'#2b1a0d', manual:'#250d2b', comment:'#0d2b14' }
-      : { start:'#d1fae5', process:'#dbeafe', decision:'#ede9fe', io:'#fef3c7', connector:'#fee2e2', for:'#d1fae5', subprogram:'#cffafe', database:'#fce7f3', document:'#ffedd5', manual:'#fae8ff', comment:'#f0fdf4' });
+      ? { text:'transparent', start:'#0f2b1a', process:'#0d1a35', decision:'#1a0d2b', io:'#2b1f0a', connector:'#2b0d0d', for:'#0d2b20', subprogram:'#0d2b2b', database:'#2b0d20', document:'#2b1a0d', manual:'#250d2b', comment:'#0d2b14', parallel:'transparent', custom:'#1e0d2b' }
+      : { text:'transparent', start:'#d1fae5', process:'#dbeafe', decision:'#ede9fe', io:'#fef3c7', connector:'#fee2e2', for:'#d1fae5', subprogram:'#cffafe', database:'#fce7f3', document:'#ffedd5', manual:'#fae8ff', comment:'#f0fdf4', parallel:'transparent', custom:'#f3e8ff' });
 
   // Update arrowhead colour for GOST
   const arrowEl = document.getElementById('arrowhead');
   if (arrowEl) arrowEl.querySelector('polygon').setAttribute('fill', isGost ? '#000000' : '#6b7280');
+  const arrowGostEl = document.getElementById('arrowhead-gost');
+  if (arrowGostEl) arrowGostEl.querySelector('polygon').setAttribute('fill', '#000000');
 
   // Draw edges
   edges.forEach(edge => {
@@ -1044,37 +1361,34 @@ function render() {
     el.setAttribute('fill', 'none');
     el.setAttribute('stroke', isSelected ? '#4fffb0' : edgeColor);
     el.setAttribute('stroke-width', isSelected ? '2.5' : '1.8');
-    el.setAttribute('marker-end', isSelected ? 'url(#arrowhead-active)' : 'url(#arrowhead)');
+
+    // Line style: solid / dashed / chain (штрихпунктир по ГОСТ 2.303-68)
+    const lineStyle = edge.lineStyle || 'solid';
+    if (lineStyle === 'dashed') {
+      el.setAttribute('stroke-dasharray', '8,5');
+    } else if (lineStyle === 'chain') {
+      // Штрихпунктир: штрих — три точки — штрих по ГОСТ 2.303-68
+      // dash, gap, dot, gap, dot, gap, dot, gap
+      el.setAttribute('stroke-dasharray', '12,3,2,3,2,3,2,3');
+    } else {
+      el.removeAttribute('stroke-dasharray');
+    }
+
+    // Arrow end: end (default) / none
+    const arrowEnd = edge.arrowEnd !== undefined ? edge.arrowEnd : 'end';
+    if (arrowEnd === 'end') {
+      el.setAttribute('marker-end', isSelected ? 'url(#arrowhead-active)' : (isGost ? 'url(#arrowhead-gost)' : 'url(#arrowhead)'));
+    } else {
+      el.removeAttribute('marker-end');
+    }
+
     el.setAttribute('pointer-events', 'none');
     el.style.cursor = 'pointer';
     el.dataset.id = edge.id;
     el.dataset.kind = 'edge';
     g.appendChild(el);
 
-    if (edge.label) {
-      const src = nodes.find(n => n.id === edge.from);
-      const dst = nodes.find(n => n.id === edge.to);
-      if (src && dst) {
-        const srcPorts = getPorts(src);
-        const dstPorts = getPorts(dst);
-        const sp = edge.fromPort ? srcPorts.find(p=>p.id===edge.fromPort)||srcPorts[2] : srcPorts[2];
-        const ep = edge.toPort ? dstPorts.find(p=>p.id===edge.toPort)||dstPorts[0] : dstPorts[0];
-        const lx = (sp.px+ep.px)/2, ly = (sp.py+ep.py)/2;
-        const lbg = document.createElementNS('http://www.w3.org/2000/svg','rect');
-        lbg.setAttribute('x', lx-20); lbg.setAttribute('y', ly-9);
-        lbg.setAttribute('width', 40); lbg.setAttribute('height', 16);
-        lbg.setAttribute('rx', 3); lbg.setAttribute('fill', labelBg);
-        g.appendChild(lbg);
-        const lt = document.createElementNS('http://www.w3.org/2000/svg','text');
-        lt.setAttribute('x', lx); lt.setAttribute('y', ly+3);
-        lt.setAttribute('text-anchor','middle');
-        lt.setAttribute('font-size','10');
-        lt.setAttribute('fill', labelFg);
-        lt.setAttribute('font-family','JetBrains Mono, monospace');
-        lt.textContent = edge.label;
-        g.appendChild(lt);
-      }
-    }
+    // Edge labels removed
 
     // Draw draggable segment handles in orthogonal mode — always render hit areas, show dots only when selected
     // Appended AFTER el so they sit on top and receive pointer events correctly
@@ -1126,9 +1440,9 @@ function render() {
     sr.setAttribute('y', selectionRect.y);
     sr.setAttribute('width', Math.abs(selectionRect.w));
     sr.setAttribute('height', Math.abs(selectionRect.h));
-    sr.setAttribute('fill', 'rgba(79,255,176,0.07)');
+    sr.setAttribute('fill', 'rgba(79,255,176,0.32)');
     sr.setAttribute('stroke', '#4fffb0');
-    sr.setAttribute('stroke-width', '1');
+    sr.setAttribute('stroke-width', '2');
     sr.setAttribute('stroke-dasharray', '5,3');
     g.appendChild(sr);
   }
@@ -1143,12 +1457,14 @@ function render() {
     grp.dataset.kind = 'node';
     grp.style.cursor = 'pointer';
 
-    // Shadow (not in GOST mode)
-    if (!isGost) {
+    // Shadow (not in GOST mode, not for text nodes)
+    if (!isGost && node.type !== 'text') {
       const shadow = document.createElementNS('http://www.w3.org/2000/svg','g');
       shadow.innerHTML = getNodeShape(node);
       const shadowShape = shadow.firstChild;
-      const shadowFill = isDark() ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.08)';
+      const shadowFill = isSelected
+        ? 'rgba(79,255,176,0.6)'
+        : (isDark() ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.08)');
       if (shadowShape.tagName === 'g') {
         Array.from(shadowShape.children).forEach(child => {
           if (child.tagName !== 'line') child.setAttribute('fill', shadowFill);
@@ -1165,10 +1481,84 @@ function render() {
     const body = document.createElementNS('http://www.w3.org/2000/svg','g');
     body.innerHTML = getNodeShape(node);
     const bodyShape = body.firstChild;
+    const isTextNode = node.type === 'text';
     const strokeColor = isGost ? '#000000' : (isSelected ? (isDark() ? '#ffffff' : '#1e293b') : (isConnectSrc ? '#4fffb0' : node.color));
     const strokeWidth = isSelected ? '2.5' : (isGost ? '2' : '1.5');
     const fillColor = nodeFills[node.type] || '#fff';
-    if (bodyShape.tagName === 'g') {
+    if (isTextNode) {
+      // Text node: transparent body; add explicit hit rect so drag works everywhere over the text
+      bodyShape.setAttribute('fill', 'transparent');
+      bodyShape.setAttribute('stroke', 'none');
+      bodyShape.setAttribute('pointer-events', 'none');
+      const hitRect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      hitRect.setAttribute('x', node.x);
+      hitRect.setAttribute('y', node.y);
+      hitRect.setAttribute('width', node.w);
+      hitRect.setAttribute('height', node.h);
+      hitRect.setAttribute('fill', 'transparent');
+      hitRect.setAttribute('stroke', 'none');
+      hitRect.setAttribute('pointer-events', 'fill');
+      grp.appendChild(hitRect);
+      if (isSelected) {
+        const selRect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+        selRect.setAttribute('x', node.x - 2);
+        selRect.setAttribute('y', node.y - 2);
+        selRect.setAttribute('width', node.w + 4);
+        selRect.setAttribute('height', node.h + 4);
+        selRect.setAttribute('rx', '2');
+        selRect.setAttribute('fill', 'none');
+        selRect.setAttribute('stroke', isGost ? '#555' : '#4fffb0');
+        selRect.setAttribute('stroke-width', '2');
+        selRect.setAttribute('stroke-dasharray', '5,3');
+        selRect.setAttribute('opacity', '1');
+        selRect.setAttribute('pointer-events', 'none');
+        grp.insertBefore(selRect, grp.firstChild);
+      }
+    } else if (node.type === 'parallel') {
+      // Parallel: only the lines get stroke, hitbox rect stays transparent
+      Array.from(bodyShape.children).forEach(child => {
+        if (child.tagName === 'line') {
+          child.setAttribute('stroke', isGost ? '#000000' : strokeColor);
+          child.setAttribute('stroke-width', '1.8');
+          child.setAttribute('fill', 'none');
+        } else {
+          child.setAttribute('fill', 'transparent');
+          child.setAttribute('stroke', 'none');
+        }
+      });
+      bodyShape.setAttribute('fill', 'none');
+      bodyShape.setAttribute('stroke', 'none');
+      if (isSelected) {
+        const selRect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+        selRect.setAttribute('x', node.x - 2);
+        selRect.setAttribute('y', node.y - 2);
+        selRect.setAttribute('width', node.w + 4);
+        selRect.setAttribute('height', node.h + 4);
+        selRect.setAttribute('rx', '2');
+        selRect.setAttribute('fill', 'none');
+        selRect.setAttribute('stroke', isGost ? '#555' : '#4fffb0');
+        selRect.setAttribute('stroke-width', '2');
+        selRect.setAttribute('stroke-dasharray', '5,3');
+        selRect.setAttribute('opacity', '1');
+        selRect.setAttribute('pointer-events', 'none');
+        grp.insertBefore(selRect, grp.firstChild);
+      }
+    } else if (node.type === 'comment') {
+      // Comment: only the lines get stroke, hitbox rect stays transparent, group itself transparent
+      Array.from(bodyShape.children).forEach(child => {
+        if (child.tagName === 'line') {
+          child.setAttribute('stroke', strokeColor);
+          child.setAttribute('stroke-width', strokeWidth);
+          child.setAttribute('fill', 'none');
+        } else {
+          // hitbox rect — keep transparent
+          child.setAttribute('fill', 'transparent');
+          child.setAttribute('stroke', 'none');
+        }
+      });
+      bodyShape.setAttribute('fill', 'none');
+      bodyShape.setAttribute('stroke', 'none');
+    } else if (bodyShape.tagName === 'g') {
       // Group shape (subprogram, database): apply to all children
       Array.from(bodyShape.children).forEach((child, idx) => {
         if (child.tagName === 'line') {
@@ -1189,20 +1579,18 @@ function render() {
       bodyShape.setAttribute('stroke', strokeColor);
       bodyShape.setAttribute('stroke-width', strokeWidth);
     }
-    if (isSelected) bodyShape.setAttribute('filter', 'url(#glow)');
+    if (isSelected && !isTextNode) bodyShape.setAttribute('filter', 'url(#glow)');
     grp.appendChild(bodyShape);
 
     // Text — font properties (GOST overrides to Times New Roman at standard sizes)
-    // Skip text rendering while inline-editing this node (editor overlay is shown instead)
-    if (inlineEditingNodeId === node.id) {
-      // Still render ports etc, just skip the text
-    } else {
+    {
     const textLines = (node.label || '').split('\n');
-    const textY = node.y + node.h/2;
-    const gostSizeDef = { start: 12, connector: 10, decision: 12, io: 12, for: 12, subprogram: 12, database: 12, document: 12, manual: 12, comment: 11, process: 12 };
+    const isTextNode = node.type === 'text';
+    const textY = isTextNode ? node.y + (node.fontSize || 14) : node.y + node.h/2;
+    const gostSizeDef = { text: 14, start: 12, connector: 10, decision: 12, io: 12, prepare: 12, loop_start: 12, loop_end: 12, subprogram: 12, comment: 11, process: 12 };
     const defaultFamily = isGost ? 'Times New Roman' : 'JetBrains Mono';
-    const defaultSize   = isGost ? (gostSizeDef[node.type] || 12) : (node.type === 'connector' ? 10 : 12);
-    const defaultWeight = isGost ? '400' : '600';
+    const defaultSize   = isGost ? (gostSizeDef[node.type] || 12) : (node.type === 'connector' ? 10 : node.type === 'text' ? 14 : 12);
+    const defaultWeight = isGost ? '400' : (node.type === 'text' ? '400' : '600');
     const rawFamily = node.fontFamily || defaultFamily;
     const familySuffix = (rawFamily === 'JetBrains Mono' || rawFamily === 'Courier New') ? ', monospace'
                         : (rawFamily === 'Times New Roman' || rawFamily === 'Georgia') ? ', serif'
@@ -1214,10 +1602,17 @@ function render() {
     const lineHeight = Math.max(nodeFontSize * 1.25, 14);
     textLines.forEach((line, i) => {
       const t = document.createElementNS('http://www.w3.org/2000/svg','text');
-      t.setAttribute('x', node.x + node.w/2);
-      t.setAttribute('y', textY - ((textLines.length-1)/2 - i) * lineHeight);
-      t.setAttribute('text-anchor','middle');
-      t.setAttribute('dominant-baseline','middle');
+      if (isTextNode) {
+        t.setAttribute('x', node.x);
+        t.setAttribute('y', node.y + nodeFontSize + i * lineHeight);
+        t.setAttribute('text-anchor', 'start');
+        t.setAttribute('dominant-baseline', 'auto');
+      } else {
+        t.setAttribute('x', node.x + node.w/2);
+        t.setAttribute('y', textY - ((textLines.length-1)/2 - i) * lineHeight);
+        t.setAttribute('text-anchor','middle');
+        t.setAttribute('dominant-baseline','middle');
+      }
       t.setAttribute('font-size', nodeFontSize);
       t.setAttribute('font-family', nodeFontFamily);
       t.setAttribute('font-weight', nodeFontWeight);
@@ -1229,29 +1624,203 @@ function render() {
     });
     } // end if not inline-editing text
 
-    // Ports
-    const showPorts = isSelected || isConnectSrc || hoveredPort?.nodeId === node.id;
+    // Ports — skip for text nodes
+    const showPorts = !isTextNode && (isSelected || isConnectSrc || hoveredNodeId === node.id);
+    if (node.type === 'parallel') {
+      // Line-port highlight: glow the whole line on hover/select instead of circles
+      const y1 = node.y + node.h * 0.25;
+      const y2 = node.y + node.h * 0.75;
+      const portColor = isDark() ? '#4fffb0' : '#00c070';
+      // Port hit areas: always rendered but narrow (±5px), so only activate near the line.
+      // hoveredNodeId for parallel is only set when cursor is near a line (see mousemove),
+      // so showPorts already means cursor is near a line.
+      if (showPorts) {
+        [y1, y2].forEach((lineY, li) => {
+          const lineId = li === 0 ? 'tline' : 'bline';
+          const hitLine = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          hitLine.setAttribute('x', node.x);
+          hitLine.setAttribute('y', lineY - 5);
+          hitLine.setAttribute('width', node.w);
+          hitLine.setAttribute('height', 10);
+          hitLine.setAttribute('fill', 'transparent');
+          hitLine.setAttribute('stroke', 'none');
+          hitLine.style.cursor = 'crosshair';
+          hitLine.dataset.kind = 'port';
+          hitLine.dataset.nodeId = node.id;
+          hitLine.dataset.portId = lineId;
+          grp.appendChild(hitLine);
+
+          // Visible glow line
+          const glowLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          glowLine.setAttribute('x1', node.x); glowLine.setAttribute('y1', lineY);
+          glowLine.setAttribute('x2', node.x + node.w); glowLine.setAttribute('y2', lineY);
+          glowLine.setAttribute('stroke', portColor);
+          glowLine.setAttribute('stroke-width', '3');
+          glowLine.setAttribute('stroke-opacity', '0.55');
+          glowLine.setAttribute('pointer-events', 'none');
+          grp.appendChild(glowLine);
+        });
+      }
+    } else {
     getPorts(node).forEach(port => {
       const isHovPort = hoveredPort && hoveredPort.nodeId === node.id && hoveredPort.portId === port.id;
+      const portColor = isDark() ? '#4fffb0' : '#00c070';
+
+      // Large invisible hit area — makes ports easy to grab from nearby
+      const hitCirc = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      hitCirc.setAttribute('cx', port.px);
+      hitCirc.setAttribute('cy', port.py);
+      hitCirc.setAttribute('r', 14);
+      hitCirc.setAttribute('fill', 'transparent');
+      hitCirc.setAttribute('stroke', 'none');
+      hitCirc.setAttribute('opacity', showPorts ? '1' : '0');
+      hitCirc.style.cursor = 'crosshair';
+      hitCirc.dataset.kind = 'port';
+      hitCirc.dataset.nodeId = node.id;
+      hitCirc.dataset.portId = port.id;
+      grp.appendChild(hitCirc);
+
+      // Visible port circle
       const pc = document.createElementNS('http://www.w3.org/2000/svg','circle');
       pc.setAttribute('cx', port.px);
       pc.setAttribute('cy', port.py);
       pc.setAttribute('r', isHovPort ? 7 : 5);
-      pc.setAttribute('fill', isHovPort ? '#4fffb0' : 'transparent');
-      pc.setAttribute('stroke', '#4fffb0');
-      pc.setAttribute('stroke-width', '1.5');
+      pc.setAttribute('fill', isHovPort ? portColor : 'transparent');
+      pc.setAttribute('stroke', portColor);
+      pc.setAttribute('stroke-width', isDark() ? '1.5' : '2');
       pc.setAttribute('opacity', showPorts ? '1' : '0');
-      pc.style.cursor = 'crosshair';
-      pc.dataset.kind = 'port';
-      pc.dataset.nodeId = node.id;
-      pc.dataset.portId = port.id;
+      pc.setAttribute('pointer-events', 'none');
       grp.appendChild(pc);
     });
+    } // end parallel else
+
+    // Parallel resize handles — left and right ends, shown when selected
+    if (node.type === 'parallel' && isSelected) {
+      const cy = node.y + node.h / 2;
+      const handleR = 6;
+      [{ side: 'left', cx: node.x }, { side: 'right', cx: node.x + node.w }].forEach(({ side, cx }) => {
+        // Invisible wide hit area
+        const hitR = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        hitR.setAttribute('x', cx - 10);
+        hitR.setAttribute('y', node.y - 8);
+        hitR.setAttribute('width', 20);
+        hitR.setAttribute('height', node.h + 16);
+        hitR.setAttribute('fill', 'transparent');
+        hitR.setAttribute('stroke', 'none');
+        hitR.style.cursor = 'ew-resize';
+        hitR.dataset.kind = 'parallelResize';
+        hitR.dataset.nodeId = node.id;
+        hitR.dataset.side = side;
+        grp.appendChild(hitR);
+
+        // Visible handle — double vertical bar
+        const hg = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        hg.setAttribute('pointer-events', 'none');
+        [-3, 3].forEach(dx => {
+          const bar = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          bar.setAttribute('x1', cx + dx); bar.setAttribute('y1', cy - handleR);
+          bar.setAttribute('x2', cx + dx); bar.setAttribute('y2', cy + handleR);
+          bar.setAttribute('stroke', '#4fffb0');
+          bar.setAttribute('stroke-width', '2');
+          bar.setAttribute('stroke-linecap', 'round');
+          hg.appendChild(bar);
+        });
+        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        dot.setAttribute('cx', cx); dot.setAttribute('cy', cy);
+        dot.setAttribute('r', handleR + 1);
+        dot.setAttribute('fill', isDark() ? '#131828' : '#fff');
+        dot.setAttribute('stroke', '#4fffb0');
+        dot.setAttribute('stroke-width', '1.5');
+        hg.insertBefore(dot, hg.firstChild);
+        grp.appendChild(hg);
+      });
+    }
 
     g.appendChild(grp);
   });
 
-  // Second pass: draw segment handles on top of nodes so they remain interactive
+  // Second pass (custom shape): draw draggable point handles with numbers when a custom node is selected
+  {
+    const selNode = nodes.find(n => n.id === selectedId && n.type === 'custom');
+    if (selNode && selNode.customPoints && selNode.customPoints.length >= 3) {
+      const { x, y, w, h } = selNode;
+      selNode.customPoints.forEach(([rx, ry], i) => {
+        const px = x + rx * w;
+        const py = y + ry * h;
+        const isFirst = i === 0;
+        const isHovered = hoveredCustomPtIdx === i;
+        const R = (isHovered ? 9 : 7) / zoom; // scale handle with zoom so it stays readable
+
+        // Outer ring (highlight)
+        const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        ring.setAttribute('cx', px); ring.setAttribute('cy', py);
+        ring.setAttribute('r', (R + 3));
+        ring.setAttribute('fill', 'none');
+        ring.setAttribute('stroke', isFirst ? '#4fffb0' : (isHovered ? '#fbbf24' : '#a78bfa'));
+        ring.setAttribute('stroke-width', 1.5 / zoom);
+        ring.setAttribute('opacity', isHovered ? '0.7' : '0.4');
+        ring.setAttribute('pointer-events', 'none');
+        g.appendChild(ring);
+
+        // Filled circle
+        const circ = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circ.setAttribute('cx', px); circ.setAttribute('cy', py);
+        circ.setAttribute('r', R);
+        circ.setAttribute('fill', isFirst ? '#4fffb0' : (isHovered ? '#fbbf24' : '#a78bfa'));
+        circ.setAttribute('stroke', isDark() ? '#0d0f14' : '#ffffff');
+        circ.setAttribute('stroke-width', 1.5 / zoom);
+        circ.setAttribute('pointer-events', 'none');
+        g.appendChild(circ);
+
+        // Number label
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('x', px);
+        label.setAttribute('y', py);
+        label.setAttribute('text-anchor', 'middle');
+        label.setAttribute('dominant-baseline', 'central');
+        label.setAttribute('font-size', Math.max(6, 8 / zoom));
+        label.setAttribute('font-family', 'JetBrains Mono, monospace');
+        label.setAttribute('font-weight', '700');
+        label.setAttribute('fill', isDark() ? '#0d0f14' : '#ffffff');
+        label.setAttribute('pointer-events', 'none');
+        label.textContent = i + 1;
+        g.appendChild(label);
+
+        // Tooltip-style tag showing point index, offset a bit above the point
+        const tagPad = 3 / zoom;
+        const tagW = 22 / zoom;
+        const tagH = 13 / zoom;
+        const tagX = px + (R + 4);
+        const tagY = py - (R + 4) - tagH;
+        const tagBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        tagBg.setAttribute('x', tagX);
+        tagBg.setAttribute('y', tagY);
+        tagBg.setAttribute('width', tagW);
+        tagBg.setAttribute('height', tagH);
+        tagBg.setAttribute('rx', 3 / zoom);
+        tagBg.setAttribute('fill', isFirst ? 'rgba(79,255,176,0.18)' : (isHovered ? 'rgba(251,191,36,0.18)' : 'rgba(167,139,250,0.18)'));
+        tagBg.setAttribute('stroke', isFirst ? '#4fffb0' : (isHovered ? '#fbbf24' : '#a78bfa'));
+        tagBg.setAttribute('stroke-width', 0.8 / zoom);
+        tagBg.setAttribute('pointer-events', 'none');
+        g.appendChild(tagBg);
+
+        const tagText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        tagText.setAttribute('x', tagX + tagW / 2);
+        tagText.setAttribute('y', tagY + tagH / 2);
+        tagText.setAttribute('text-anchor', 'middle');
+        tagText.setAttribute('dominant-baseline', 'central');
+        tagText.setAttribute('font-size', Math.max(5, 7 / zoom));
+        tagText.setAttribute('font-family', 'JetBrains Mono, monospace');
+        tagText.setAttribute('font-weight', '600');
+        tagText.setAttribute('fill', isFirst ? '#4fffb0' : (isHovered ? '#fbbf24' : '#a78bfa'));
+        tagText.setAttribute('pointer-events', 'none');
+        tagText.textContent = `P${i + 1}`;
+        g.appendChild(tagText);
+      });
+    }
+  }
+
+  // Third pass: draw segment handles on top of nodes so they remain interactive
   if (edgeStyle === 'orthogonal') {
     edges.forEach(edge => {
       const isSelected = selectedId === edge.id;
@@ -1297,16 +1866,149 @@ function render() {
     const line = document.createElementNS('http://www.w3.org/2000/svg','line');
     const src = nodes.find(n => n.id === connectingFrom);
     const srcPorts = getPorts(src);
-    const p = connectingFromPort
+    let p = connectingFromPort
       ? srcPorts.find(pt => pt.id === connectingFromPort)
       : closestPort(src, connectingTemp.x, connectingTemp.y);
+    // For parallel line-ports, use the stored attach X
+    if (p && p.isLine && connectingFromPortX !== null) {
+      p = { ...p, px: Math.max(src.x, Math.min(connectingFromPortX, src.x + src.w)) };
+    }
+
+    // Snap end: if we have a snap target, line tip goes to that port
+    const endX = snapTarget ? snapTarget.port.px : connectingTemp.x;
+    const endY = snapTarget ? snapTarget.port.py : connectingTemp.y;
+
     line.setAttribute('x1', p.px); line.setAttribute('y1', p.py);
-    line.setAttribute('x2', connectingTemp.x); line.setAttribute('y2', connectingTemp.y);
+    line.setAttribute('x2', endX); line.setAttribute('y2', endY);
     line.setAttribute('stroke', '#4fffb0');
     line.setAttribute('stroke-width', '1.5');
     line.setAttribute('stroke-dasharray', '6,4');
     line.setAttribute('marker-end','url(#arrowhead-active)');
     g.appendChild(line);
+
+    // Highlight snap target port
+    if (snapTarget) {
+      const sp = snapTarget.port;
+
+      // Pulsing ring around the snap port
+      const snapRing = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      snapRing.setAttribute('cx', sp.px); snapRing.setAttribute('cy', sp.py);
+      snapRing.setAttribute('r', 12 / zoom);
+      snapRing.setAttribute('fill', 'rgba(79,255,176,0.15)');
+      snapRing.setAttribute('stroke', '#4fffb0');
+      snapRing.setAttribute('stroke-width', 1.5 / zoom);
+      snapRing.setAttribute('pointer-events','none');
+      g.appendChild(snapRing);
+
+      // Inner dot
+      const snapDot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      snapDot.setAttribute('cx', sp.px); snapDot.setAttribute('cy', sp.py);
+      snapDot.setAttribute('r', 5 / zoom);
+      snapDot.setAttribute('fill', '#4fffb0');
+      snapDot.setAttribute('pointer-events','none');
+      g.appendChild(snapDot);
+
+      // Snap indicator label
+      const snapLabel = document.createElementNS('http://www.w3.org/2000/svg','text');
+      snapLabel.setAttribute('x', sp.px);
+      snapLabel.setAttribute('y', sp.py - 16 / zoom);
+      snapLabel.setAttribute('text-anchor','middle');
+      snapLabel.setAttribute('font-size', 9 / zoom);
+      snapLabel.setAttribute('font-family','JetBrains Mono, monospace');
+      snapLabel.setAttribute('font-weight','700');
+      snapLabel.setAttribute('fill','#4fffb0');
+      snapLabel.setAttribute('pointer-events','none');
+      snapLabel.textContent = '⌁ snap';
+      g.appendChild(snapLabel);
+    }
+  }
+
+  // Polygon draw preview
+  if (polygonDrawMode && polygonPoints.length > 0) {
+    // Draw snap guide lines if cursor is snapping
+    if (polygonCursorPt && polygonPoints.length > 0) {
+      const SNAP_THRESHOLD = 12 / zoom;
+      polygonPoints.forEach(ep => {
+        const snapX = Math.abs(polygonCursorPt.x - ep.x) < SNAP_THRESHOLD;
+        const snapY = Math.abs(polygonCursorPt.y - ep.y) < SNAP_THRESHOLD;
+        if (snapX) {
+          const gl = document.createElementNS('http://www.w3.org/2000/svg','line');
+          gl.setAttribute('x1', ep.x); gl.setAttribute('y1', Math.min(ep.y, polygonCursorPt.y) - 40);
+          gl.setAttribute('x2', ep.x); gl.setAttribute('y2', Math.max(ep.y, polygonCursorPt.y) + 40);
+          gl.setAttribute('stroke','#4fffb0'); gl.setAttribute('stroke-width','0.7');
+          gl.setAttribute('stroke-dasharray','3,3'); gl.setAttribute('pointer-events','none');
+          gl.setAttribute('opacity','0.6');
+          g.appendChild(gl);
+        }
+        if (snapY) {
+          const gl = document.createElementNS('http://www.w3.org/2000/svg','line');
+          gl.setAttribute('x1', Math.min(ep.x, polygonCursorPt.x) - 40); gl.setAttribute('y1', ep.y);
+          gl.setAttribute('x2', Math.max(ep.x, polygonCursorPt.x) + 40); gl.setAttribute('y2', ep.y);
+          gl.setAttribute('stroke','#4fffb0'); gl.setAttribute('stroke-width','0.7');
+          gl.setAttribute('stroke-dasharray','3,3'); gl.setAttribute('pointer-events','none');
+          gl.setAttribute('opacity','0.6');
+          g.appendChild(gl);
+        }
+      });
+    }
+    const allPts = polygonCursorPt ? [...polygonPoints, polygonCursorPt] : polygonPoints;
+    if (allPts.length >= 3) {
+      const polyEl = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+      polyEl.setAttribute('points', allPts.map(p=>`${p.x},${p.y}`).join(' '));
+      polyEl.setAttribute('fill', 'rgba(167,139,250,0.18)');
+      polyEl.setAttribute('stroke', '#a78bfa');
+      polyEl.setAttribute('stroke-width', '1.5');
+      polyEl.setAttribute('stroke-dasharray', '6,3');
+      polyEl.setAttribute('pointer-events','none');
+      g.appendChild(polyEl);
+    } else if (allPts.length === 2) {
+      const lineEl = document.createElementNS('http://www.w3.org/2000/svg','line');
+      lineEl.setAttribute('x1', allPts[0].x); lineEl.setAttribute('y1', allPts[0].y);
+      lineEl.setAttribute('x2', allPts[1].x); lineEl.setAttribute('y2', allPts[1].y);
+      lineEl.setAttribute('stroke','#a78bfa'); lineEl.setAttribute('stroke-width','1.5');
+      lineEl.setAttribute('stroke-dasharray','6,3'); lineEl.setAttribute('pointer-events','none');
+      g.appendChild(lineEl);
+    }
+    polygonPoints.forEach((pt, i) => {
+      const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      c.setAttribute('cx', pt.x); c.setAttribute('cy', pt.y); c.setAttribute('r', i===0?7:5);
+      c.setAttribute('fill', i===0 ? '#4fffb0' : '#a78bfa');
+      c.setAttribute('stroke', isDark()?'#0d0f14':'#fff'); c.setAttribute('stroke-width','1.5');
+      c.setAttribute('pointer-events','none');
+      g.appendChild(c);
+      const tt = document.createElementNS('http://www.w3.org/2000/svg','text');
+      tt.setAttribute('x', pt.x); tt.setAttribute('y', pt.y-9);
+      tt.setAttribute('text-anchor','middle'); tt.setAttribute('font-size','9');
+      tt.setAttribute('fill', '#a78bfa'); tt.setAttribute('font-family','monospace');
+      tt.setAttribute('pointer-events','none');
+      tt.textContent = i===0?'●':(i+1);
+      g.appendChild(tt);
+    });
+    if (polygonPoints.length >= 3) {
+      const last = polygonPoints[polygonPoints.length-1];
+      const first = polygonPoints[0];
+      const hint = document.createElementNS('http://www.w3.org/2000/svg','line');
+      hint.setAttribute('x1', last.x); hint.setAttribute('y1', last.y);
+      hint.setAttribute('x2', first.x); hint.setAttribute('y2', first.y);
+      hint.setAttribute('stroke','rgba(167,139,250,0.4)'); hint.setAttribute('stroke-width','1');
+      hint.setAttribute('stroke-dasharray','3,3'); hint.setAttribute('pointer-events','none');
+      g.appendChild(hint);
+    }
+  }
+
+  // Alignment snap guides (shown during node drag)
+  if (alignSnapGuides.length > 0) {
+    alignSnapGuides.forEach(gl => {
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', gl.x1); line.setAttribute('y1', gl.y1);
+      line.setAttribute('x2', gl.x2); line.setAttribute('y2', gl.y2);
+      line.setAttribute('stroke', '#4fffb0');
+      line.setAttribute('stroke-width', '0.7');
+      line.setAttribute('stroke-dasharray', '4,3');
+      line.setAttribute('opacity', '0.75');
+      line.setAttribute('pointer-events', 'none');
+      g.appendChild(line);
+    });
   }
 
   updateMinimap();
@@ -1325,7 +2027,7 @@ function updateStatus() {
 function updateMinimap() {
   const ctx = mmCtx;
   ctx.clearRect(0,0,140,90);
-  ctx.fillStyle = diagramStyle === 'gost' ? '#f5f5f0' : (isDark() ? '#0d0f14' : '#f0f2f7');
+  ctx.fillStyle = diagramStyle === 'gost' ? (isDark() ? '#252830' : '#f5f5f0') : (isDark() ? '#0d0f14' : '#f0f2f7');
   ctx.fillRect(0,0,140,90);
   if (!nodes.length) return;
   const xs = nodes.map(n => [n.x, n.x+n.w]).flat();
@@ -1339,7 +2041,7 @@ function updateMinimap() {
     const src = nodes.find(n=>n.id===edge.from);
     const dst = nodes.find(n=>n.id===edge.to);
     if (!src||!dst) return;
-    ctx.strokeStyle = diagramStyle === 'gost' ? '#333333' : (isDark() ? '#4b5563' : '#94a3b8');
+    ctx.strokeStyle = isDark() ? '#aaaaaa' : (diagramStyle === 'gost' ? '#333333' : '#94a3b8');
     ctx.lineWidth = 0.8;
     ctx.beginPath();
     ctx.moveTo(ox+(src.x+src.w/2-minX+30)*s, oy+(src.y+src.h/2-minY+30)*s);
@@ -1349,14 +2051,100 @@ function updateMinimap() {
   nodes.forEach(node => {
     const nx = ox+(node.x-minX+30)*s, ny = oy+(node.y-minY+30)*s;
     const nw = node.w*s, nh = node.h*s;
-    ctx.fillStyle = node.id===selectedId ? '#4fffb0' : node.color+'55';
-    ctx.strokeStyle = node.color;
+    const dark = isDark();
+    const shapeColor = dark ? '#ffffff' : node.color;
+    ctx.fillStyle = node.id===selectedId ? '#4fffb0' : (dark ? 'rgba(255,255,255,0.12)' : node.color+'55');
+    ctx.strokeStyle = shapeColor;
     ctx.lineWidth = 0.8;
     ctx.beginPath();
     ctx.rect(nx, ny, nw, nh);
     ctx.fill(); ctx.stroke();
   });
 }
+
+// ============================================================
+// POLYGON DRAW MODE
+// ============================================================
+function startPolygonDraw(editNodeId) {
+  polygonDrawMode = true;
+  polygonPoints = [];
+  polygonCursorPt = null;
+  polygonEditNodeId = editNodeId || null;
+  if (editNodeId) {
+    // Pre-populate points from existing node
+    const node = nodes.find(n => n.id === editNodeId);
+    if (node && node.customPoints) {
+      polygonPoints = node.customPoints.map(([rx,ry]) => ({ x: node.x + rx*node.w, y: node.y + ry*node.h }));
+    }
+  }
+  canvasWrap.style.cursor = 'crosshair';
+  document.getElementById('paletteCustomLabel').textContent = '⏹ Рисование...';
+  document.getElementById('statMode').innerHTML = 'Режим: <span style="color:#a78bfa;font-weight:700">рисование фигуры — 2×клик или Enter для завершения</span>';
+  render();
+}
+
+function cancelPolygonDraw() {
+  polygonDrawMode = false;
+  polygonPoints = [];
+  polygonCursorPt = null;
+  polygonEditNodeId = null;
+  canvasWrap.style.cursor = '';
+  document.getElementById('paletteCustomLabel').textContent = '✏ Нарисовать';
+  document.getElementById('statMode').innerHTML = 'Режим: <span class="text-accent">просмотр</span>';
+  render();
+}
+
+function finalizePolygon() {
+  if (polygonPoints.length < 3) { cancelPolygonDraw(); return; }
+  // Compute bounding box
+  const xs = polygonPoints.map(p => p.x);
+  const ys = polygonPoints.map(p => p.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const bw = maxX - minX || 1, bh = maxY - minY || 1;
+  // Normalize points to [0,1]×[0,1] relative to bounding box
+  const customPoints = polygonPoints.map(p => [
+    (p.x - minX) / bw,
+    (p.y - minY) / bh
+  ]);
+  saveHistory();
+  if (polygonEditNodeId) {
+    // Update existing node
+    const node = nodes.find(n => n.id === polygonEditNodeId);
+    if (node) {
+      node.x = minX; node.y = minY;
+      node.w = bw;   node.h = bh;
+      node.customPoints = customPoints;
+    }
+    selectedId = polygonEditNodeId;
+  } else {
+    const node = {
+      id: `n${nodeIdCounter++}`,
+      type: 'custom',
+      x: minX, y: minY,
+      w: bw, h: bh,
+      label: '',
+      color: '#000000',
+      customPoints,
+    };
+    nodes.push(node);
+    selectedId = node.id;
+    selectedIds.clear();
+    selectedIds.add(node.id);
+  }
+  updateStatus();
+  cancelPolygonDraw();
+  updateProps();
+}
+
+// Double-click to finish polygon
+svg.addEventListener('dblclick', e => {
+  if (!polygonDrawMode) return;
+  e.preventDefault(); e.stopPropagation();
+  // Remove the last point (it was added on the first click of the double-click)
+  if (polygonPoints.length > 0) polygonPoints.pop();
+  finalizePolygon();
+});
 
 // ============================================================
 // PROPERTIES PANEL
@@ -1372,9 +2160,13 @@ function updateProps() {
   const isGost = diagramStyle === 'gost';
 
   if (el.type !== undefined && isNode) {
+    document.getElementById('propEdgeStyleGroup').style.display = 'none';
+    document.getElementById('propEdgeArrowGroup').style.display = 'none';
     document.getElementById('propText').value = el.label || '';
     document.getElementById('propType').value = el.type;
     document.getElementById('propType').style.display = '';
+    document.getElementById('propTextGroup').style.display = '';
+    document.getElementById('customPointsEditor').style.display = 'none';
 
     // Font controls — show for nodes only
     document.getElementById('propFontGroup').style.display = '';
@@ -1386,8 +2178,45 @@ function updateProps() {
 
     // Default font depends on mode: GOST → Times New Roman, otherwise JetBrains Mono
     const defaultFamily = isGost ? 'Times New Roman' : 'JetBrains Mono';
-    const gostSizes = { start: 12, connector: 10, decision: 12, io: 12, for: 12, subprogram: 12, database: 12, document: 12, manual: 12, comment: 11, process: 12 };
-    const defaultSize = isGost ? (gostSizes[el.type] || 12) : (el.type === 'connector' ? 10 : 12);
+    const gostSizes = { text: 14, start: 12, connector: 10, decision: 12, io: 12, prepare: 12, loop_start: 12, loop_end: 12, subprogram: 12, comment: 11, process: 12 };
+    const defaultSize = isGost ? (gostSizes[el.type] || 12) : (el.type === 'connector' ? 10 : el.type === 'text' ? 14 : 12);
+
+    // Show paramA control for all parameterised nodes
+    const paramAGroup = document.getElementById('propParamAGroup');
+    const paramAHint  = document.getElementById('propParamAHint');
+    const paramATypes = ['start','process','decision','io','connector','prepare','loop_start','loop_end','subprogram','comment','parallel'];
+    const paramAHints = {
+      start:      'b\u00a0=\u00a01.5a\u00a0·\u00a0h\u00a0=\u00a00.5a\u00a0·\u00a0rx\u00a0=\u00a00.25a',
+      process:    'h\u00a0=\u00a0a\u00a0·\u00a0b\u00a0=\u00a01.5a',
+      decision:   'h\u00a0=\u00a0a\u00a0·\u00a0b\u00a0=\u00a01.5a',
+      io:         'h\u00a0=\u00a0a\u00a0·\u00a0b\u00a0=\u00a01.5a\u00a0·\u00a0сдвиг\u00a0=\u00a00.25a',
+      connector:  'диаметр\u00a0=\u00a00.5a',
+      prepare:    'h\u00a0=\u00a0a\u00a0·\u00a0b\u00a0=\u00a01.5a\u00a0·\u00a0срез\u00a0=\u00a00.25a',
+      loop_start: 'h\u00a0=\u00a0a\u00a0·\u00a0b\u00a0=\u00a01.5a\u00a0·\u00a0выступ\u00a0=\u00a00.25a',
+      loop_end:   'h\u00a0=\u00a0a\u00a0·\u00a0b\u00a0=\u00a01.5a\u00a0·\u00a0выступ\u00a0=\u00a00.25a',
+      subprogram: 'h\u00a0=\u00a0a\u00a0·\u00a0b\u00a0=\u00a01.5a\u00a0·\u00a0полосы\u00a0=\u00a00.15a',
+      comment:    'h\u00a0=\u00a0a',
+      parallel:   'ширина\u00a0=\u00a0b\u00a0·\u00a0толщина\u00a0=\u00a0по\u00a0линии',
+    };
+    // Show "Edit points" button only for custom type
+    const editPolyBtn = document.getElementById('btnEditPolygon');
+    if (editPolyBtn) editPolyBtn.style.display = el.type === 'custom' ? '' : 'none';
+    // Show custom points editor only for custom type
+    const cpEditor = document.getElementById('customPointsEditor');
+    if (cpEditor) {
+      cpEditor.style.display = el.type === 'custom' ? '' : 'none';
+      if (el.type === 'custom') renderCustomPointsList(el);
+    }
+    if (paramATypes.includes(el.type)) {
+      paramAGroup.style.display = '';
+      document.getElementById('propParamA').value = el.paramA || 80;
+      paramAHint.textContent = paramAHints[el.type] || '';
+      updateParamAWarn(el, el.paramA || 80);
+    } else {
+      paramAGroup.style.display = 'none';
+      const warn = document.getElementById('propParamAWarn');
+      if (warn) warn.style.display = 'none';
+    }
 
     document.getElementById('propFontFamily').value = el.fontFamily || defaultFamily;
     document.getElementById('propFontSize').value = el.fontSize || defaultSize;
@@ -1399,12 +2228,31 @@ function updateProps() {
       sw.classList.toggle('active', sw.dataset.color === el.color);
     });
   } else {
-    document.getElementById('propText').value = el.label || '';
+    document.getElementById('propTextGroup').style.display = 'none';
     document.getElementById('propType').style.display = 'none';
+    document.getElementById('propParamAGroup').style.display = 'none';
     document.getElementById('propFontGroup').style.display = 'none';
     document.getElementById('propFontStyleGroup').style.display = 'none';
     document.getElementById('gostFontHint').style.display = 'none';
+    document.getElementById('customPointsEditor').style.display = 'none';
     document.querySelectorAll('.color-swatch').forEach(sw => sw.classList.remove('active'));
+    const editPolyBtnElse = document.getElementById('btnEditPolygon');
+    if (editPolyBtnElse) editPolyBtnElse.style.display = 'none';
+
+    // Show edge controls
+    const isEdge = !!(edges.find(e => e.id === selectedId));
+    document.getElementById('propEdgeStyleGroup').style.display = isEdge ? '' : 'none';
+    document.getElementById('propEdgeArrowGroup').style.display = isEdge ? '' : 'none';
+    if (isEdge) {
+      const edge = edges.find(e => e.id === selectedId);
+      document.getElementById('propEdgeLineStyle').value = edge.lineStyle || 'solid';
+      const arrowEnd = edge.arrowEnd !== undefined ? edge.arrowEnd : 'end';
+      document.querySelectorAll('.edge-arrow-btn').forEach(btn => {
+        const isActive = btn.dataset.arrow === arrowEnd;
+        btn.style.borderColor = isActive ? '#4fffb0' : '';
+        btn.style.color = isActive ? '#4fffb0' : '';
+      });
+    }
   }
 }
 
@@ -1415,7 +2263,11 @@ document.getElementById('propText').addEventListener('focus', () => {
 document.getElementById('propText').addEventListener('input', e => {
   const node = nodes.find(n=>n.id===selectedId);
   const edge = edges.find(ed=>ed.id===selectedId);
-  if (node) { node.label = e.target.value; render(); }
+  if (node) {
+    node.label = e.target.value;
+    if (node.type === 'text') recalcTextNodeSize(node);
+    render();
+  }
   if (edge) { edge.label = e.target.value; render(); }
 });
 document.getElementById('propType').addEventListener('change', e => {
@@ -1424,14 +2276,24 @@ document.getElementById('propType').addEventListener('change', e => {
     saveHistory();
     node.type = e.target.value;
     const def = NODE_DEFAULTS[node.type];
-    node.w = def.w; node.h = def.h; node.color = def.color;
+    node.color = def.color;
+    if (def.paramA !== undefined) {
+      node.paramA = node.paramA || def.paramA;
+      applyParamA(node, node.paramA);
+    } else {
+      node.w = def.w; node.h = def.h;
+    }
     render(); updateProps();
   }
 });
 
 document.getElementById('propFontFamily').addEventListener('change', e => {
   const node = nodes.find(n=>n.id===selectedId);
-  if (node) { saveHistory(); node.fontFamily = e.target.value; render(); }
+  if (node) {
+    saveHistory(); node.fontFamily = e.target.value;
+    if (node.type === 'text') recalcTextNodeSize(node);
+    render();
+  }
 });
 document.getElementById('propFontStyle').addEventListener('change', e => {
   const node = nodes.find(n=>n.id===selectedId);
@@ -1440,6 +2302,7 @@ document.getElementById('propFontStyle').addEventListener('change', e => {
     const [style, weight] = e.target.value.split('|');
     node.fontStyle = style;
     node.fontWeight = weight;
+    if (node.type === 'text') recalcTextNodeSize(node);
     render();
   }
 });
@@ -1447,16 +2310,149 @@ document.getElementById('propFontSize').addEventListener('input', e => {
   const node = nodes.find(n=>n.id===selectedId);
   const val = parseInt(e.target.value);
   if (node && val >= 6 && val <= 72) {
-    node.fontSize = val; render();
+    node.fontSize = val;
+    if (node.type === 'text') recalcTextNodeSize(node);
+    render();
   }
 });
 document.getElementById('propFontSize').addEventListener('change', e => {
   const node = nodes.find(n=>n.id===selectedId);
   const val = parseInt(e.target.value);
   if (node && val >= 6 && val <= 72) {
-    saveHistory(); node.fontSize = val; render();
+    saveHistory(); node.fontSize = val;
+    if (node.type === 'text') recalcTextNodeSize(node);
+    render();
   }
 });
+function applyParamA(node, val) {
+  node.paramA = val;
+  switch (node.type) {
+    case 'start':
+      node.w = val * 1.5;
+      node.h = val * 0.5;
+      break;
+    case 'process':
+    case 'decision':
+    case 'io':
+    case 'prepare':
+    case 'loop_start':
+    case 'loop_end':
+    case 'subprogram':
+    case 'comment':
+      node.h = val;
+      node.w = val * 1.5;
+      break;
+    case 'connector':
+      // diameter = 0.5a → w = h = 0.5a
+      node.w = val * 0.5;
+      node.h = val * 0.5;
+      break;
+    case 'parallel':
+      // ГОСТ: b = 1.5a (ширина), gap между линиями ≈ 0.2a
+      node.w = val * 1.5;
+      node.h = Math.max(val * 0.2, 16);
+      break;
+  }
+}
+document.getElementById('propParamA').addEventListener('input', e => {
+  const node = nodes.find(n => n.id === selectedId);
+  const raw = parseFloat(e.target.value);
+  if (isNaN(raw)) return;
+  if (raw < PARAM_A_MIN || raw > PARAM_A_MAX) {
+    e.target.style.borderColor = '#ff6b6b';
+    return;
+  }
+  e.target.style.borderColor = '';
+  if (node) {
+    applyParamA(node, raw);
+    render();
+    updateParamAWarn(node, raw);
+  }
+});
+document.getElementById('propParamA').addEventListener('change', e => {
+  const node = nodes.find(n => n.id === selectedId);
+  let val = parseFloat(e.target.value);
+  if (isNaN(val)) { e.target.value = node ? (node.paramA || 80) : 80; return; }
+  if (val < PARAM_A_MIN || val > PARAM_A_MAX) {
+    val = clampParamA(val);
+    e.target.value = val;
+  }
+  e.target.style.borderColor = '';
+  if (node) {
+    saveHistory();
+    applyParamA(node, val);
+    render();
+    updateParamAWarn(node, val);
+  }
+});
+
+// Global param A
+const PARAM_A_MIN = 20;
+const PARAM_A_MAX = 600;
+
+function clampParamA(val) {
+  return Math.min(PARAM_A_MAX, Math.max(PARAM_A_MIN, val));
+}
+
+function showParamAError(inputEl, msg) {
+  let errEl = document.getElementById('globalParamAError');
+  if (!errEl) {
+    errEl = document.createElement('div');
+    errEl.id = 'globalParamAError';
+    errEl.style.cssText = 'color:#ff6b6b;font-family:monospace;font-size:9px;margin-top:4px;';
+    inputEl.parentElement.insertAdjacentElement('afterend', errEl);
+  }
+  errEl.textContent = msg;
+  inputEl.style.borderColor = '#ff6b6b';
+  setTimeout(() => {
+    errEl.textContent = '';
+    inputEl.style.borderColor = '';
+  }, 2000);
+}
+
+document.getElementById('globalParamAInput').addEventListener('input', e => {
+  const raw = parseFloat(e.target.value);
+  if (isNaN(raw)) return;
+  if (raw < PARAM_A_MIN || raw > PARAM_A_MAX) {
+    showParamAError(e.target, `a должно быть от ${PARAM_A_MIN} до ${PARAM_A_MAX}`);
+  }
+});
+document.getElementById('globalParamAInput').addEventListener('change', e => {
+  let val = parseFloat(e.target.value);
+  if (isNaN(val)) { e.target.value = globalParamA; return; }
+  if (val < PARAM_A_MIN || val > PARAM_A_MAX) {
+    showParamAError(e.target, `a должно быть от ${PARAM_A_MIN} до ${PARAM_A_MAX}`);
+    val = clampParamA(val);
+    e.target.value = val;
+  }
+  globalParamA = val;
+});
+document.getElementById('btnApplyGlobalA').addEventListener('click', () => {
+  const input = document.getElementById('globalParamAInput');
+  let val = parseFloat(input.value);
+  if (isNaN(val)) { input.value = globalParamA; return; }
+  if (val < PARAM_A_MIN || val > PARAM_A_MAX) {
+    showParamAError(input, `a должно быть от ${PARAM_A_MIN} до ${PARAM_A_MAX}`);
+    val = clampParamA(val);
+    input.value = val;
+  }
+  saveHistory();
+  globalParamA = val;
+  nodes.forEach(n => { if (n.paramA !== undefined) applyParamA(n, val); });
+  render(); updateProps();
+});
+
+function updateParamAWarn(node, val) {
+  const warn = document.getElementById('propParamAWarn');
+  const warnText = document.getElementById('propParamAWarnText');
+  if (!warn) return;
+  if (node.paramA !== undefined && Math.round(node.paramA) !== Math.round(globalParamA)) {
+    warn.style.display = 'flex';
+    warnText.textContent = `Не соответствует глобальному a\u00a0=\u00a0${Math.round(globalParamA)}`;
+  } else {
+    warn.style.display = 'none';
+  }
+}
 document.querySelectorAll('.color-swatch').forEach(sw => {
   sw.addEventListener('click', () => {
     const node = nodes.find(n=>n.id===selectedId);
@@ -1472,6 +2468,30 @@ document.getElementById('btnDeleteSelected').addEventListener('click', () => {
   render(); updateProps(); updateStatus();
 });
 
+document.getElementById('btnEditPolygon').addEventListener('click', () => {
+  const node = nodes.find(n => n.id === selectedId && n.type === 'custom');
+  if (!node) return;
+  startPolygonDraw(node.id);
+});
+
+// Edge line style
+document.getElementById('propEdgeLineStyle').addEventListener('change', e => {
+  const edge = edges.find(ed => ed.id === selectedId);
+  if (edge) { saveHistory(); edge.lineStyle = e.target.value; render(); }
+});
+
+// Edge arrow end buttons
+document.querySelectorAll('.edge-arrow-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const edge = edges.find(ed => ed.id === selectedId);
+    if (edge) {
+      saveHistory();
+      edge.arrowEnd = btn.dataset.arrow;
+      render(); updateProps();
+    }
+  });
+});
+
 // ============================================================
 // DRAG & DROP FROM PALETTE
 // ============================================================
@@ -1484,6 +2504,27 @@ document.querySelectorAll('.palette-item').forEach(item => {
   });
 });
 
+// Custom polygon palette button
+document.getElementById('paletteCustomShape').addEventListener('click', () => {
+  if (polygonDrawMode) { cancelPolygonDraw(); }
+  else { startPolygonDraw(null); }
+});
+
+// Keyboard: Escape cancels drawing, Enter finalizes
+document.addEventListener('keydown', e => {
+  if (polygonDrawMode) {
+    if (e.key === 'Escape') { cancelPolygonDraw(); e.preventDefault(); }
+    if (e.key === 'Enter') {
+      if (polygonPoints.length >= 3) finalizePolygon();
+      else cancelPolygonDraw();
+      e.preventDefault();
+    }
+    if (e.key === 'Backspace' && polygonPoints.length > 0) {
+      polygonPoints.pop(); render(); e.preventDefault();
+    }
+  }
+}, true);
+
 canvasWrap.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
 canvasWrap.addEventListener('drop', e => {
   e.preventDefault();
@@ -1495,13 +2536,19 @@ canvasWrap.addEventListener('drop', e => {
   const node = {
     id: `n${nodeIdCounter++}`,
     type: dragType,
-    x: x - def.w/2,
-    y: y - def.h/2,
+    x: x,
+    y: y,
     w: def.w,
     h: def.h,
     label: def.label,
     color: def.color,
+    ...(def.paramA !== undefined ? { paramA: def.paramA } : {}),
   };
+  // Apply paramA formulas so dimensions are always consistent on creation
+  if (node.paramA !== undefined) applyParamA(node, node.paramA);
+  // Center the node on drop point now that w/h are finalised
+  node.x = x - node.w / 2;
+  node.y = y - node.h / 2;
   saveHistory();
   nodes.push(node);
   selectedId = node.id;
@@ -1521,6 +2568,41 @@ function isOverDeleteZone(clientX, clientY) {
 
 svg.addEventListener('mousemove', e => {
   const pt = svgPoint(e);
+
+  // Parallel width resize
+  if (draggingParallelResize) {
+    const node = nodes.find(n => n.id === draggingParallelResize.nodeId);
+    if (node) {
+      const dx = pt.x - draggingParallelResize.startX;
+      if (draggingParallelResize.side === 'right') {
+        node.w = Math.max(40, draggingParallelResize.startNodeW + dx);
+      } else {
+        // left handle: move x and shrink w
+        const newW = Math.max(40, draggingParallelResize.startNodeW - dx);
+        node.x = draggingParallelResize.startNodeX + (draggingParallelResize.startNodeW - newW);
+        node.w = newW;
+      }
+      // Recompute connected edges routing
+      edges.forEach(ed => {
+        if (ed.from === node.id || ed.to === node.id) ed.segOffsets = {};
+      });
+      render();
+    }
+    return;
+  }
+
+  // Polygon drawing mode: track cursor
+  if (polygonDrawMode) {
+    let snapped = { x: pt.x, y: pt.y };
+    const SNAP_THRESHOLD = 12 / zoom;
+    polygonPoints.forEach(ep => {
+      if (Math.abs(pt.x - ep.x) < SNAP_THRESHOLD) snapped.x = ep.x;
+      if (Math.abs(pt.y - ep.y) < SNAP_THRESHOLD) snapped.y = ep.y;
+    });
+    polygonCursorPt = snapped;
+    render();
+    return;
+  }
 
   // Segment drag
   if (draggingSegment) {
@@ -1558,8 +2640,13 @@ svg.addEventListener('mousemove', e => {
       node.x = pt.x - ox;
       node.y = pt.y - oy;
     });
+    // Alignment snap for the group
+    const draggedNodes = multiDragOffsets.map(d => d.node);
+    const draggedIds = new Set(draggedNodes.map(n => n.id));
+    const { dx, dy, guides } = computeAlignSnap(draggedNodes, draggedIds);
+    draggedNodes.forEach(n => { n.x += dx; n.y += dy; });
+    alignSnapGuides = guides;
     // Clear segOffsets for edges connected to any dragged node
-    const draggedIds = new Set(multiDragOffsets.map(d => d.node.id));
     edges.forEach(ed => {
       if (draggedIds.has(ed.from) || draggedIds.has(ed.to)) ed.segOffsets = {};
     });
@@ -1577,6 +2664,11 @@ svg.addEventListener('mousemove', e => {
   if (draggingNode) {
     draggingNode.x = pt.x - draggingOffset.x;
     draggingNode.y = pt.y - draggingOffset.y;
+    // Alignment snap
+    const { dx, dy, guides } = computeAlignSnap([draggingNode], new Set([draggingNode.id]));
+    draggingNode.x += dx;
+    draggingNode.y += dy;
+    alignSnapGuides = guides;
     // Clear segOffsets for connected edges so routing recalculates
     edges.forEach(ed => {
       if (ed.from === draggingNode.id || ed.to === draggingNode.id) {
@@ -1614,35 +2706,123 @@ svg.addEventListener('mousemove', e => {
     applyTransform(); updateMinimap(); return;
   }
   if (connectingFrom) {
-    connectingTemp = pt; render();
+    connectingTemp = pt;
+
+    // Magnetic snap: find nearest node (not the source) within snap radius
+    const SNAP_PX = 12; // screen-space radius
+    const SNAP_SVG = SNAP_PX / zoom; // convert to SVG coords
+    let bestSnap = null, bestDist = Infinity;
+    nodes.forEach(n => {
+      if (n.id === connectingFrom || n.type === 'text') return;
+      let dist;
+      if (n.type === 'parallel') {
+        // For parallel: snap only when cursor is within SNAP_SVG of one of the two lines
+        const ly1 = n.y + n.h * 0.25;
+        const ly2 = n.y + n.h * 0.75;
+        const inXRange = pt.x >= n.x - SNAP_SVG && pt.x <= n.x + n.w + SNAP_SVG;
+        if (!inXRange) return;
+        dist = Math.min(Math.abs(pt.y - ly1), Math.abs(pt.y - ly2));
+      } else {
+        // Distance to node bounding box (nearest point on box perimeter/interior)
+        const cx = Math.max(n.x, Math.min(pt.x, n.x + n.w));
+        const cy = Math.max(n.y, Math.min(pt.y, n.y + n.h));
+        dist = Math.hypot(pt.x - cx, pt.y - cy);
+      }
+      if (dist < SNAP_SVG && dist < bestDist) {
+        bestDist = dist;
+        bestSnap = n;
+      }
+    });
+    if (bestSnap) {
+      const srcNode = nodes.find(n => n.id === connectingFrom);
+      const srcCenter = srcNode ? getNodeCenter(srcNode) : pt;
+      const port = getBestToPort(bestSnap, srcCenter, pt);
+      snapTarget = { node: bestSnap, port };
+    } else {
+      snapTarget = null;
+    }
+
+    render();
   }
   const target = e.target;
   if (target.dataset.kind === 'port') {
     hoveredPort = { nodeId: target.dataset.nodeId, portId: target.dataset.portId };
+    hoveredNodeId = target.dataset.nodeId;
     render();
   } else if (target.closest && target.closest('[data-kind="seghandle"]')) {
     // cursor already set on element, no re-render needed
-  } else if (hoveredPort) {
-    hoveredPort = null; render();
+  } else {
+    // Proximity check: show ports when cursor is within NODE_HOVER_PAD of any node bounding box
+    const NODE_HOVER_PAD = 20 / zoom;
+    const LINE_SNAP_PAD = 8 / zoom; // for parallel: must be near an actual line
+    const nearNode = nodes.find(n => {
+      if (n.type === 'text') return false;
+      if (n.type === 'parallel') {
+        // Only activate port mode when cursor is very close to one of the two lines
+        const ly1 = n.y + n.h * 0.25;
+        const ly2 = n.y + n.h * 0.75;
+        const inXRange = pt.x >= n.x - LINE_SNAP_PAD && pt.x <= n.x + n.w + LINE_SNAP_PAD;
+        return inXRange && (Math.abs(pt.y - ly1) < LINE_SNAP_PAD || Math.abs(pt.y - ly2) < LINE_SNAP_PAD);
+      }
+      return pt.x >= n.x - NODE_HOVER_PAD && pt.x <= n.x + n.w + NODE_HOVER_PAD &&
+             pt.y >= n.y - NODE_HOVER_PAD && pt.y <= n.y + n.h + NODE_HOVER_PAD;
+    });
+    const newHoveredNodeId = nearNode ? nearNode.id : null;
+    const newHoveredPort = null;
+    if (newHoveredNodeId !== hoveredNodeId || hoveredPort !== null) {
+      hoveredNodeId = newHoveredNodeId;
+      hoveredPort = newHoveredPort;
+      render();
+    }
   }
 });
 
 svg.addEventListener('mousedown', e => {
-  // Close inline editor only if clicking outside the editor itself
-  if (inlineEditingNodeId) {
-    // dblclick fires two mousedowns before dblclick event — check if we're clicking the editing node
-    const pt0 = svgPoint(e);
-    const editNode = nodes.find(n => n.id === inlineEditingNodeId);
-    const clickedSameNode = editNode &&
-      pt0.x >= editNode.x && pt0.x <= editNode.x + editNode.w &&
-      pt0.y >= editNode.y && pt0.y <= editNode.y + editNode.h;
-    if (!clickedSameNode) {
-      commitInlineEditor();
-    }
-    // Don't return — allow normal selection to proceed
+  if (e.button === 2) {
+    if (polygonDrawMode) { cancelPolygonDraw(); return; }
+    isPanning = true; e.preventDefault(); return;
   }
-  if (e.button === 2) { isPanning = true; e.preventDefault(); return; }
+
+  // Polygon drawing mode: add point on left click
+  if (polygonDrawMode) {
+    e.preventDefault(); e.stopPropagation();
+    const pt = svgPoint(e);
+    // Snap to existing points
+    let snapped = { x: pt.x, y: pt.y };
+    const SNAP_THRESHOLD = 12 / zoom;
+    polygonPoints.forEach(ep => {
+      if (Math.abs(pt.x - ep.x) < SNAP_THRESHOLD) snapped.x = ep.x;
+      if (Math.abs(pt.y - ep.y) < SNAP_THRESHOLD) snapped.y = ep.y;
+    });
+    // If click is near first point and we have >=3 points, close the shape
+    if (polygonPoints.length >= 3) {
+      const first = polygonPoints[0];
+      const dist = Math.hypot((snapped.x - first.x)*zoom, (snapped.y - first.y)*zoom);
+      if (dist < 16) { finalizePolygon(); return; }
+    }
+    polygonPoints.push(snapped);
+    render();
+    return;
+  }
+
   const target = e.target;
+
+  // Parallel resize handle drag
+  const parallelResizeEl = target.closest('[data-kind="parallelResize"]');
+  if (parallelResizeEl) {
+    const nodeId = parallelResizeEl.dataset.nodeId;
+    const side   = parallelResizeEl.dataset.side;
+    const node   = nodes.find(n => n.id === nodeId);
+    if (node) {
+      saveHistory();
+      const pt0 = svgPoint(e);
+      draggingParallelResize = { nodeId, side, startX: pt0.x, startNodeX: node.x, startNodeW: node.w };
+      selectedId = nodeId;
+      selectedIds.clear(); selectedIds.add(nodeId);
+      render(); updateProps();
+    }
+    e.stopPropagation(); return;
+  }
 
   // Segment handle drag
   const segHandleEl = target.closest('[data-kind="seghandle"]');
@@ -1652,7 +2832,9 @@ svg.addEventListener('mousedown', e => {
     const axis = segHandleEl.dataset.axis;
     saveHistory();
     draggingSegment = { edgeId, segIndex, axis };
+    selectedIds.clear();
     selectedId = edgeId;
+    render(); updateProps();
     e.stopPropagation(); return;
   }
 
@@ -1660,15 +2842,19 @@ svg.addEventListener('mousedown', e => {
   if (target.dataset.kind === 'port') {
     const clickedNodeId = target.dataset.nodeId;
     const clickedPortId = target.dataset.portId;
+    const clickedNode = nodes.find(n => n.id === clickedNodeId);
 
     // Check if there's already an incoming edge to this port
-    const incomingEdge = edges.find(ed => ed.to === clickedNodeId && ed.toPort === clickedPortId);
+    const incomingEdge = clickedNode && clickedNode.type !== 'parallel'
+      ? edges.find(ed => ed.to === clickedNodeId && ed.toPort === clickedPortId)
+      : null;
 
     if (incomingEdge) {
       // Hijack: take control of that existing edge — remove it and start dragging from its source
       edges = edges.filter(ed => ed.id !== incomingEdge.id);
       connectingFrom = incomingEdge.from;
       connectingFromPort = incomingEdge.fromPort;
+      connectingFromPortX = incomingEdge.fromPortX !== undefined ? incomingEdge.fromPortX : null;
       connectingTemp = svgPoint(e);
       // Highlight the hijacked source node so user knows which edge they grabbed
       selectedId = null;
@@ -1676,6 +2862,9 @@ svg.addEventListener('mousedown', e => {
     } else {
       connectingFrom = clickedNodeId;
       connectingFromPort = clickedPortId;
+      // For parallel line-ports, store the X where user clicked
+      const pt0 = svgPoint(e);
+      connectingFromPortX = (clickedPortId === 'tline' || clickedPortId === 'bline') ? pt0.x : null;
       connectingTemp = svgPoint(e);
     }
     e.stopPropagation(); return;
@@ -1733,6 +2922,13 @@ svg.addEventListener('mousedown', e => {
 });
 
 svg.addEventListener('mouseup', e => {
+  // End parallel resize
+  if (draggingParallelResize) {
+    draggingParallelResize = null;
+    render(); updateProps();
+    return;
+  }
+
   // End segment drag
   if (draggingSegment) {
     draggingSegment = null;
@@ -1758,6 +2954,7 @@ svg.addEventListener('mouseup', e => {
       updateStatus(); updateProps();
     }
     multiDragOffsets = [];
+    alignSnapGuides = [];
     deleteZone.style.display = 'none';
     deleteZone.style.background = 'rgba(255,107,107,0.10)';
     deleteZone.style.borderColor = '#ff6b6b';
@@ -1774,6 +2971,7 @@ svg.addEventListener('mouseup', e => {
       updateStatus(); updateProps();
     }
     draggingNode = null;
+    alignSnapGuides = [];
     deleteZone.style.display = 'none';
     deleteZone.style.background = 'rgba(255,107,107,0.10)';
     deleteZone.style.borderColor = '#ff6b6b';
@@ -1783,34 +2981,68 @@ svg.addEventListener('mouseup', e => {
 
   // Complete connection on mouseup — works for both drag and click
   if (connectingFrom) {
-    // Use svgPoint to find which node is under the cursor by geometry (with padding)
     const pt = svgPoint(e);
-    const PAD = 12; // extra hit area around each node
-    const targetNode = nodes.find(n =>
-      n.id !== connectingFrom &&
-      pt.x >= n.x - PAD && pt.x <= n.x + n.w + PAD &&
-      pt.y >= n.y - PAD && pt.y <= n.y + n.h + PAD
-    );
+
+    // 1) Magnetic snap: if we have a snap target, use it directly
+    if (snapTarget) {
+      const toNode = snapTarget.node;
+      const toPort = snapTarget.port;
+      saveHistory();
+      const srcNode0 = nodes.find(n => n.id === connectingFrom);
+      const isParallelSrc = srcNode0 && srcNode0.type === 'parallel';
+      const isParallelDst = toNode.type === 'parallel';
+      // For parallel nodes, allow multiple edges (no port dedup)
+      if (!isParallelSrc && !isParallelDst) {
+        edges = edges.filter(ed => !(
+          (ed.from === connectingFrom && ed.fromPort === connectingFromPort) ||
+          (ed.to === toNode.id && ed.toPort === toPort.id) ||
+          (ed.to === connectingFrom && ed.toPort === connectingFromPort) ||
+          (ed.from === toNode.id && ed.fromPort === toPort.id)
+        ));
+      }
+      edges.push({ id:`e${edgeIdCounter++}`, from:connectingFrom, fromPort:connectingFromPort, fromPortX: connectingFromPortX !== null ? connectingFromPortX : undefined, to:toNode.id, toPort:toPort.id, toPortX: toPort.isLine ? toPort.px : undefined, label:'' });
+      updateStatus();
+      connectingFrom = null; connectingFromPort = null; connectingFromPortX = null; connectingTemp = null; snapTarget = null; hoveredNodeId = null; hoveredPort = null;
+      render(); return;
+    }
+
+    // 2) Precise geometric hit (original behaviour, wider PAD)
+    const PAD = 12;
+    const targetNode = nodes.find(n => {
+      if (n.id === connectingFrom) return false;
+      if (n.type === 'parallel') {
+        // Only accept drop if cursor is within PAD of one of the lines
+        const ly1 = n.y + n.h * 0.25;
+        const ly2 = n.y + n.h * 0.75;
+        const inXRange = pt.x >= n.x - PAD && pt.x <= n.x + n.w + PAD;
+        return inXRange && (Math.abs(pt.y - ly1) < PAD || Math.abs(pt.y - ly2) < PAD);
+      }
+      return pt.x >= n.x - PAD && pt.x <= n.x + n.w + PAD &&
+             pt.y >= n.y - PAD && pt.y <= n.y + n.h + PAD;
+    });
 
     if (targetNode) {
       const srcNode = nodes.find(n => n.id === connectingFrom);
       const srcCenter = srcNode ? getNodeCenter(srcNode) : { x: pt.x, y: pt.y };
       const toPort = getBestToPort(targetNode, srcCenter, pt);
-      // One edge per port: remove anything using fromPort (out) or toPort (in)
       saveHistory();
-      edges = edges.filter(ed => !(
-        (ed.from === connectingFrom && ed.fromPort === connectingFromPort) ||
-        (ed.to === targetNode.id && ed.toPort === toPort.id) ||
-        (ed.to === connectingFrom && ed.toPort === connectingFromPort) ||
-        (ed.from === targetNode.id && ed.fromPort === toPort.id)
-      ));
-      edges.push({ id:`e${edgeIdCounter++}`, from:connectingFrom, fromPort:connectingFromPort, to:targetNode.id, toPort:toPort.id, label:'' });
+      const isParallelSrc2 = srcNode && srcNode.type === 'parallel';
+      const isParallelDst2 = targetNode.type === 'parallel';
+      if (!isParallelSrc2 && !isParallelDst2) {
+        edges = edges.filter(ed => !(
+          (ed.from === connectingFrom && ed.fromPort === connectingFromPort) ||
+          (ed.to === targetNode.id && ed.toPort === toPort.id) ||
+          (ed.to === connectingFrom && ed.toPort === connectingFromPort) ||
+          (ed.from === targetNode.id && ed.fromPort === toPort.id)
+        ));
+      }
+      edges.push({ id:`e${edgeIdCounter++}`, from:connectingFrom, fromPort:connectingFromPort, fromPortX: connectingFromPortX !== null ? connectingFromPortX : undefined, to:targetNode.id, toPort:toPort.id, toPortX: toPort.isLine ? toPort.px : undefined, label:'' });
       updateStatus();
-      connectingFrom = null; connectingFromPort = null; connectingTemp = null;
+      connectingFrom = null; connectingFromPort = null; connectingFromPortX = null; connectingTemp = null; snapTarget = null; hoveredNodeId = null; hoveredPort = null;
       render(); return;
     }
 
-    // Also try elementFromPoint as fallback (for non-rectangular shapes)
+    // 3) DOM elementFromPoint fallback (non-rectangular shapes)
     const domTarget = document.elementFromPoint(e.clientX, e.clientY);
     const nodeGrp = domTarget && domTarget.closest('[data-kind="node"]');
     if (nodeGrp && nodeGrp.dataset.id !== connectingFrom) {
@@ -1820,134 +3052,125 @@ svg.addEventListener('mouseup', e => {
       const srcCenter2 = srcNode2 ? getNodeCenter(srcNode2) : { x: pt.x, y: pt.y };
       const toPort = getBestToPort(toNode, srcCenter2, pt);
       saveHistory();
-      edges = edges.filter(ed => !(
-        (ed.from === connectingFrom && ed.fromPort === connectingFromPort) ||
-        (ed.to === toId && ed.toPort === toPort.id) ||
-        (ed.to === connectingFrom && ed.toPort === connectingFromPort) ||
-        (ed.from === toId && ed.fromPort === toPort.id)
-      ));
-      edges.push({ id:`e${edgeIdCounter++}`, from:connectingFrom, fromPort:connectingFromPort, to:toId, toPort:toPort.id, label:'' });
+      const isParallelSrc3 = srcNode2 && srcNode2.type === 'parallel';
+      const isParallelDst3 = toNode && toNode.type === 'parallel';
+      if (!isParallelSrc3 && !isParallelDst3) {
+        edges = edges.filter(ed => !(
+          (ed.from === connectingFrom && ed.fromPort === connectingFromPort) ||
+          (ed.to === toId && ed.toPort === toPort.id) ||
+          (ed.to === connectingFrom && ed.toPort === connectingFromPort) ||
+          (ed.from === toId && ed.fromPort === toPort.id)
+        ));
+      }
+      edges.push({ id:`e${edgeIdCounter++}`, from:connectingFrom, fromPort:connectingFromPort, fromPortX: connectingFromPortX !== null ? connectingFromPortX : undefined, to:toId, toPort:toPort.id, toPortX: toPort.isLine ? toPort.px : undefined, label:'' });
       updateStatus();
-      connectingFrom = null; connectingFromPort = null; connectingTemp = null;
+      connectingFrom = null; connectingFromPort = null; connectingFromPortX = null; connectingTemp = null; snapTarget = null; hoveredNodeId = null; hoveredPort = null;
       render(); return;
     }
 
     // Released on empty canvas — cancel
-    connectingFrom = null; connectingFromPort = null; connectingTemp = null;
+    connectingFrom = null; connectingFromPort = null; connectingFromPortX = null; connectingTemp = null; snapTarget = null; hoveredNodeId = null; hoveredPort = null;
     render();
   }
 });
 
-svg.addEventListener('contextmenu', e => e.preventDefault());
+// Stop parallel resize if mouse leaves the SVG
+svg.addEventListener('mouseleave', () => {
+  if (draggingParallelResize) {
+    draggingParallelResize = null;
+    render(); updateProps();
+  }
+});
 
 // ============================================================
 // INLINE TEXT EDITING ON DOUBLE-CLICK
 // ============================================================
-let inlineEditingNodeId = null;
-const inlineEditor = document.getElementById('inlineEditor');
-const inlineEditorText = document.getElementById('inlineEditorText');
-
+// Recalculate text node bounding box to fit its content
+function recalcTextNodeSize(node) {
+  if (node.type !== 'text') return;
+  const lines = (node.label || ' ').split('\n');
+  const fs = node.fontSize || 14;
+  const lh = Math.max(fs * 1.3, 16);
+  const padX = 4, padY = 4;
+  node.h = Math.max(fs + (lines.length - 1) * lh + padY, fs + padY);
+  const tmpSvg = document.getElementById('canvas');
+  const tmpText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  tmpText.setAttribute('font-size', fs);
+  tmpText.setAttribute('font-family', node.fontFamily || 'JetBrains Mono, monospace');
+  tmpText.setAttribute('font-weight', node.fontWeight || '400');
+  tmpText.setAttribute('font-style', node.fontStyle || 'normal');
+  tmpText.setAttribute('visibility', 'hidden');
+  tmpSvg.appendChild(tmpText);
+  let maxW = 0;
+  lines.forEach(line => {
+    tmpText.textContent = line || ' ';
+    try { maxW = Math.max(maxW, tmpText.getComputedTextLength()); } catch(e) {}
+  });
+  tmpSvg.removeChild(tmpText);
+  node.w = Math.max(maxW + padX * 2, 20);
+}
 function getNodeFontProps(node) {
   const isGost = diagramStyle === 'gost';
-  const fam = node.fontFamily || (isGost ? 'Times New Roman' : 'JetBrains Mono');
+  const fam = node.fontFamily || (isGost ? 'Times New Roman' : (node.type === 'text' ? 'Times New Roman' : 'JetBrains Mono'));
   const famCss = fam + ((fam === 'JetBrains Mono' || fam === 'Courier New') ? ',monospace' : (fam === 'Times New Roman' || fam === 'Georgia') ? ',serif' : ',sans-serif');
-  const gostSizes = { start:12, connector:10, decision:12, io:12, for:12, subprogram:12, database:12, document:12, manual:12, comment:11, process:12 };
-  const defaultSize = isGost ? (gostSizes[node.type]||12) : (node.type === 'connector' ? 10 : 12);
+  const gostSizes = { text: 14, start:12, connector:10, decision:12, io:12, for:12, subprogram:12, database:12, document:12, manual:12, comment:11, process:12 };
+  const defaultSize = isGost ? (gostSizes[node.type]||12) : (node.type === 'connector' ? 10 : node.type === 'text' ? 14 : 12);
   return {
     family: famCss,
     size: node.fontSize || defaultSize,
     style: node.fontStyle || 'normal',
-    weight: node.fontWeight || (isGost ? '400' : '600'),
+    weight: node.fontWeight || (node.type === 'text' ? '400' : (isGost ? '400' : '600')),
   };
 }
 
-function openInlineEditor(node) {
-  inlineEditingNodeId = node.id;
-  selectedId = node.id;
-
-  const fp = getNodeFontProps(node);
-  const scaledFontSize = fp.size * zoom;
-
-  // canvasWrap is position:relative, inlineEditor is absolute inside it
-  // SVG fills canvasWrap entirely, so we just apply pan+zoom transform
-  const cx = node.x * zoom + pan.x + (node.w * zoom) / 2;
-  const cy = node.y * zoom + pan.y + (node.h * zoom) / 2;
-
-  inlineEditorText.style.fontFamily  = fp.family;
-  inlineEditorText.style.fontSize    = scaledFontSize + 'px';
-  inlineEditorText.style.fontStyle   = fp.style;
-  inlineEditorText.style.fontWeight  = fp.weight;
-  inlineEditorText.style.color       = diagramStyle === 'gost' ? '#000' : node.color;
-  inlineEditorText.style.minWidth    = Math.max(node.w * zoom * 0.7, 40) + 'px';
-  inlineEditorText.style.maxWidth    = (node.w * zoom * 1.6) + 'px';
-  inlineEditorText.style.lineHeight  = Math.max(scaledFontSize * 1.35, 16) + 'px';
-
-  inlineEditorText.innerText = node.label || '';
-
-  inlineEditor.style.left      = cx + 'px';
-  inlineEditor.style.top       = cy + 'px';
-  inlineEditor.style.transform = 'translate(-50%, -50%)';
-  inlineEditor.style.display   = 'block';
-
-  requestAnimationFrame(() => {
-    inlineEditorText.focus();
-    const range = document.createRange();
-    range.selectNodeContents(inlineEditorText);
-    range.collapse(false);
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
-  });
-
-  // Re-render to show selection highlight but DON'T hide the editor
-  updateProps();
-}
-
 function commitInlineEditor() {
-  if (!inlineEditingNodeId) return;
-  const node = nodes.find(n => n.id === inlineEditingNodeId);
-  if (node) {
-    const newLabel = inlineEditorText.innerText.replace(/\u00a0/g,' ').trimEnd();
-    if (newLabel !== node.label) {
-      saveHistory();
-      node.label = newLabel;
-    }
-  }
-  inlineEditingNodeId = null;
-  inlineEditor.style.display = 'none';
-  inlineEditorText.innerText = '';
-  render(); updateProps();
+  // No-op: inline editing removed
 }
 
 function cancelInlineEditor() {
-  inlineEditingNodeId = null;
-  inlineEditor.style.display = 'none';
-  inlineEditorText.innerText = '';
-  render();
+  // No-op: inline editing removed
 }
 
-// Commit on Enter (without Shift), cancel on Escape
-inlineEditorText.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitInlineEditor(); }
-  if (e.key === 'Escape') { cancelInlineEditor(); }
-});
-
-// Commit when focus leaves the editor
-inlineEditorText.addEventListener('blur', e => {
-  // relatedTarget = element that received focus; if it's inside the panel it's fine to commit
-  setTimeout(() => {
-    if (inlineEditingNodeId) commitInlineEditor();
-  }, 120);
-});
-
 svg.addEventListener('dblclick', e => {
+  // Double-click on empty canvas → create a text node (no inline editing)
   const nodeGrp = e.target.closest('[data-kind="node"]');
   if (nodeGrp) {
     const node = nodes.find(n => n.id === nodeGrp.dataset.id);
     if (node) {
       e.stopPropagation();
-      openInlineEditor(node);
+      selectedId = node.id;
+      selectedIds.clear();
+      render(); updateProps();
+      // Focus the text field in the props panel
+      const propText = document.getElementById('propText');
+      if (propText && propText.closest('#propsBody') && propText.closest('#propsBody').style.display !== 'none') {
+        propText.focus();
+        propText.select();
+      }
     }
+  } else {
+    // Double-click on empty canvas → create a text node
+    const pt = svgPoint(e);
+    const def = NODE_DEFAULTS['text'];
+    const node = {
+      id: `n${nodeIdCounter++}`,
+      type: 'text',
+      x: pt.x,
+      y: pt.y - (def.h / 2),
+      w: def.w,
+      h: def.h,
+      label: '',
+      color: def.color,
+    };
+    saveHistory();
+    nodes.push(node);
+    selectedId = node.id;
+    render(); updateProps(); updateStatus();
+    // Focus the text prop in the sidebar
+    setTimeout(() => {
+      const propText = document.getElementById('propText');
+      if (propText) { propText.focus(); propText.select(); }
+    }, 50);
   }
 });
 
@@ -1963,25 +3186,353 @@ canvasWrap.addEventListener('wheel', e => {
 }, { passive: false });
 
 // ============================================================
+// COPY / PASTE / DUPLICATE
+// ============================================================
+function getSelectedNodeIds() {
+  const ids = new Set();
+  if (selectedIds.size > 0) selectedIds.forEach(id => ids.add(id));
+  else if (selectedId && nodes.find(n => n.id === selectedId)) ids.add(selectedId);
+  return ids;
+}
+
+function copySelected() {
+  const ids = getSelectedNodeIds();
+  if (!ids.size) return;
+  const copiedNodes = nodes.filter(n => ids.has(n.id)).map(n => JSON.parse(JSON.stringify(n)));
+  const copiedEdges = edges.filter(ed => ids.has(ed.from) && ids.has(ed.to)).map(ed => JSON.parse(JSON.stringify(ed)));
+  clipboard = { nodes: copiedNodes, edges: copiedEdges };
+  showToast(`Скопировано: ${copiedNodes.length} блок(ов)`);
+}
+
+function cutSelected() {
+  const ids = getSelectedNodeIds();
+  if (!ids.size) return;
+  const copiedNodes = nodes.filter(n => ids.has(n.id)).map(n => JSON.parse(JSON.stringify(n)));
+  const copiedEdges = edges.filter(ed => ids.has(ed.from) && ids.has(ed.to)).map(ed => JSON.parse(JSON.stringify(ed)));
+  clipboard = { nodes: copiedNodes, edges: copiedEdges };
+  saveHistory();
+  nodes = nodes.filter(n => !ids.has(n.id));
+  edges = edges.filter(ed => !ids.has(ed.from) && !ids.has(ed.to));
+  selectedId = null; selectedIds.clear();
+  render(); updateProps(); updateStatus();
+  showToast(`Вырезано: ${copiedNodes.length} блок(ов)`);
+}
+
+function pasteClipboard(offsetX = 24, offsetY = 24) {
+  if (!clipboard || !clipboard.nodes.length) return;
+  saveHistory();
+  const idMap = {};
+  const newNodes = clipboard.nodes.map(n => {
+    const newId = `n${nodeIdCounter++}`;
+    idMap[n.id] = newId;
+    return { ...JSON.parse(JSON.stringify(n)), id: newId, x: n.x + offsetX, y: n.y + offsetY };
+  });
+  const newEdges = clipboard.edges.map(ed => ({
+    ...JSON.parse(JSON.stringify(ed)),
+    id: `e${edgeIdCounter++}`,
+    from: idMap[ed.from] || ed.from,
+    to: idMap[ed.to] || ed.to,
+    segOffsets: {},
+  }));
+  nodes.push(...newNodes);
+  edges.push(...newEdges);
+  selectedIds.clear();
+  selectedId = null;
+  if (newNodes.length === 1) {
+    selectedId = newNodes[0].id;
+  } else {
+    newNodes.forEach(n => selectedIds.add(n.id));
+  }
+  render(); updateProps(); updateStatus();
+  showToast(`Вставлено: ${newNodes.length} блок(ов)`);
+}
+
+function duplicateSelected() {
+  const ids = getSelectedNodeIds();
+  if (!ids.size) return;
+  saveHistory();
+  const idMap = {};
+  const dupNodes = nodes.filter(n => ids.has(n.id)).map(n => {
+    const newId = `n${nodeIdCounter++}`;
+    idMap[n.id] = newId;
+    return { ...JSON.parse(JSON.stringify(n)), id: newId, x: n.x + 24, y: n.y + 24 };
+  });
+  const dupEdges = edges.filter(ed => ids.has(ed.from) && ids.has(ed.to)).map(ed => ({
+    ...JSON.parse(JSON.stringify(ed)),
+    id: `e${edgeIdCounter++}`,
+    from: idMap[ed.from],
+    to: idMap[ed.to],
+    segOffsets: {},
+  }));
+  nodes.push(...dupNodes);
+  edges.push(...dupEdges);
+  selectedIds.clear();
+  selectedId = null;
+  if (dupNodes.length === 1) {
+    selectedId = dupNodes[0].id;
+  } else {
+    dupNodes.forEach(n => selectedIds.add(n.id));
+  }
+  render(); updateProps(); updateStatus();
+  showToast(`Дублировано: ${dupNodes.length} блок(ов)`);
+}
+
+// ============================================================
+// TOAST NOTIFICATION
+// ============================================================
+function showToast(msg) {
+  let toast = document.getElementById('gfToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'gfToast';
+    const dark = document.documentElement.classList.contains('dark');
+    toast.style.cssText = `
+      position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9999;
+      padding:7px 18px;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:11px;
+      pointer-events:none;transition:opacity 0.3s;
+    `;
+    document.body.appendChild(toast);
+  }
+  const dark = document.documentElement.classList.contains('dark');
+  toast.style.background = dark ? '#1e2540' : '#ffffff';
+  toast.style.border = `1px solid ${dark ? '#4fffb0' : '#34d399'}`;
+  toast.style.color = dark ? '#4fffb0' : '#059669';
+  toast.style.boxShadow = '0 4px 16px rgba(0,0,0,0.25)';
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  clearTimeout(toast._timeout);
+  toast._timeout = setTimeout(() => { toast.style.opacity = '0'; }, 1800);
+}
+
+// ============================================================
+// CONTEXT MENU (RIGHT-CLICK ON CANVAS)
+// ============================================================
+let _ctxMenu = null;
+function removeContextMenu() {
+  if (_ctxMenu) { _ctxMenu.remove(); _ctxMenu = null; }
+}
+
+function showContextMenu(e, nodeId) {
+  removeContextMenu();
+  e.preventDefault();
+  const dark = document.documentElement.classList.contains('dark');
+  const hasSelection = nodeId || selectedIds.size > 0;
+  const hasClipboard = clipboard && clipboard.nodes.length > 0;
+
+  // Ensure clicked node is selected
+  if (nodeId && !selectedIds.has(nodeId) && selectedId !== nodeId) {
+    selectedId = nodeId;
+    selectedIds.clear();
+    render(); updateProps();
+  }
+
+  const menu = document.createElement('div');
+  menu.id = 'gfCtxMenu';
+  menu.style.cssText = `
+    position:fixed;left:${e.clientX}px;top:${e.clientY}px;z-index:4000;
+    min-width:190px;border-radius:10px;overflow:hidden;
+    background:${dark ? '#131828' : '#ffffff'};
+    border:1px solid ${dark ? '#1e2540' : '#dde1ec'};
+    box-shadow:0 12px 32px rgba(0,0,0,0.4);
+    font-family:'JetBrains Mono',monospace;font-size:11px;
+    padding:4px 0;
+  `;
+
+  const sep = () => {
+    const d = document.createElement('div');
+    d.style.cssText = `height:1px;margin:3px 0;background:${dark ? '#1e2540' : '#dde1ec'};`;
+    menu.appendChild(d);
+  };
+
+  const item = (icon, label, shortcut, action, danger = false, disabled = false) => {
+    const el = document.createElement('div');
+    el.style.cssText = `
+      display:flex;align-items:center;justify-content:space-between;
+      padding:7px 14px;cursor:${disabled ? 'not-allowed' : 'pointer'};
+      color:${disabled ? (dark ? '#3a4260' : '#c0c7d4') : danger ? '#ff6b6b' : (dark ? '#e8eaf0' : '#1a202c')};
+      transition:background 0.1s;gap:12px;
+    `;
+    const left = document.createElement('span');
+    left.style.cssText = 'display:flex;align-items:center;gap:7px;';
+    left.innerHTML = `<span style="width:14px;text-align:center;opacity:${disabled?0.35:0.85}">${icon}</span><span>${label}</span>`;
+    el.appendChild(left);
+    if (shortcut) {
+      const sh = document.createElement('span');
+      sh.style.cssText = `font-size:9px;color:${disabled ? (dark?'#2a3050':'#d0d5e0') : (dark?'#4b5563':'#9ca3af')};white-space:nowrap;`;
+      sh.textContent = shortcut;
+      el.appendChild(sh);
+    }
+    if (!disabled) {
+      el.addEventListener('mouseenter', () => el.style.background = dark ? '#1e2540' : '#f0f2f7');
+      el.addEventListener('mouseleave', () => el.style.background = 'transparent');
+      el.addEventListener('click', () => { removeContextMenu(); action(); });
+    }
+    menu.appendChild(el);
+  };
+
+  if (hasSelection) {
+    item('⧉', 'Копировать', 'Ctrl+C', copySelected);
+    item('✂', 'Вырезать', 'Ctrl+X', cutSelected);
+  }
+  item('⎘', 'Вставить', 'Ctrl+V', () => {
+    // Paste near cursor
+    const rect = svg.getBoundingClientRect();
+    if (clipboard && clipboard.nodes.length) {
+      const minX = Math.min(...clipboard.nodes.map(n => n.x));
+      const minY = Math.min(...clipboard.nodes.map(n => n.y));
+      const curX = (e.clientX - rect.left - pan.x) / zoom;
+      const curY = (e.clientY - rect.top  - pan.y) / zoom;
+      const ox = curX - minX;
+      const oy = curY - minY;
+      pasteClipboard(ox, oy);
+    }
+  }, false, !hasClipboard);
+
+  if (hasSelection) {
+    item('⊞', 'Дублировать', 'Ctrl+D', duplicateSelected);
+    sep();
+    const selCount = selectedIds.size || (selectedId ? 1 : 0);
+    item('🗑', 'Удалить', 'Del', () => {
+      saveHistory();
+      const ids = getSelectedNodeIds();
+      nodes = nodes.filter(n => !ids.has(n.id));
+      edges = edges.filter(ed => !ids.has(ed.from) && !ids.has(ed.to) && !ids.has(ed.id));
+      selectedId = null; selectedIds.clear();
+      render(); updateProps(); updateStatus();
+    }, true);
+  }
+
+  if (hasSelection) {
+    sep();
+    item('⬆', 'На передний план', '', () => {
+      const ids = getSelectedNodeIds();
+      const toMove = nodes.filter(n => ids.has(n.id));
+      nodes = [...nodes.filter(n => !ids.has(n.id)), ...toMove];
+      render();
+    });
+    item('⬇', 'На задний план', '', () => {
+      const ids = getSelectedNodeIds();
+      const toMove = nodes.filter(n => ids.has(n.id));
+      nodes = [...toMove, ...nodes.filter(n => !ids.has(n.id))];
+      render();
+    });
+  }
+
+  sep();
+  item('⊡', 'Вписать в экран', 'F', () => document.getElementById('btnFit').click());
+  item('↩', 'Отмена', 'Ctrl+Z', undo);
+
+  document.body.appendChild(menu);
+  _ctxMenu = menu;
+
+  // Flip menu if it goes off screen
+  const mRect = menu.getBoundingClientRect();
+  if (mRect.right > window.innerWidth) menu.style.left = (e.clientX - mRect.width) + 'px';
+  if (mRect.bottom > window.innerHeight) menu.style.top = (e.clientY - mRect.height) + 'px';
+
+  // Close on outside click or Escape — use named refs so contextmenu events aren't swallowed
+  function onOutsideClick(ev) {
+    if (_ctxMenu && !_ctxMenu.contains(ev.target)) {
+      removeContextMenu();
+      document.removeEventListener('click', onOutsideClick, true);
+      document.removeEventListener('keydown', onEscKey, true);
+    }
+  }
+  function onEscKey(ev) {
+    if (ev.key === 'Escape') {
+      removeContextMenu();
+      document.removeEventListener('click', onOutsideClick, true);
+      document.removeEventListener('keydown', onEscKey, true);
+    }
+  }
+  setTimeout(() => {
+    document.addEventListener('click', onOutsideClick, true);
+    document.addEventListener('keydown', onEscKey, true);
+  }, 0);
+}
+
+// Wire up context menu on canvas
+svg.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  const nodeGrp = e.target.closest('[data-kind="node"]');
+  const nodeId = nodeGrp ? nodeGrp.dataset.id : null;
+  showContextMenu(e, nodeId);
+});
+
+// ============================================================
 // KEYBOARD
 // ============================================================
+// Select all nodes
+function selectAll() {
+  selectedIds.clear();
+  nodes.forEach(n => selectedIds.add(n.id));
+  selectedId = null;
+  render(); updateProps(); updateStatus();
+}
+
 document.addEventListener('keydown', e => {
   const tag = e.target.tagName;
   const isEditing = tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable;
 
-  // Undo/Redo — intercept globally, but never when user is typing
-  if (e.ctrlKey && e.key === 'z') {
-    if (!isEditing) { e.preventDefault(); e.stopPropagation(); undo(); }
-    return;
-  }
-  if (e.ctrlKey && (e.key === 'y' || e.key === 'Y')) {
-    if (!isEditing) { e.preventDefault(); e.stopPropagation(); redo(); }
-    return;
+  // ── Ctrl / Meta combos ───────────────────────────────────────
+  // ВАЖНО: используем e.code (физическая клавиша), а не e.key,
+  // чтобы сочетания работали при любой раскладке (в т.ч. русской).
+  if (e.ctrlKey || e.metaKey) {
+    const code = e.code; // 'KeyZ', 'KeyC', 'KeyV', ... — не зависит от раскладки
+
+    // Undo: Ctrl+Z
+    if (code === 'KeyZ' && !e.shiftKey) {
+      e.preventDefault(); e.stopPropagation();
+      if (!isEditing) undo();
+      return;
+    }
+    // Redo: Ctrl+Y  или  Ctrl+Shift+Z
+    if (code === 'KeyY' || (code === 'KeyZ' && e.shiftKey)) {
+      e.preventDefault(); e.stopPropagation();
+      if (!isEditing) redo();
+      return;
+    }
+    // Copy: Ctrl+C
+    if (code === 'KeyC') {
+      if (!isEditing) { e.preventDefault(); e.stopPropagation(); copySelected(); }
+      return;
+    }
+    // Cut: Ctrl+X
+    if (code === 'KeyX') {
+      if (!isEditing) { e.preventDefault(); e.stopPropagation(); cutSelected(); }
+      return;
+    }
+    // Paste: Ctrl+V
+    if (code === 'KeyV') {
+      if (!isEditing) { e.preventDefault(); e.stopPropagation(); pasteClipboard(24, 24); }
+      return;
+    }
+    // Duplicate: Ctrl+D — также блокирует «Добавить в закладки»
+    if (code === 'KeyD') {
+      e.preventDefault(); e.stopPropagation();
+      if (!isEditing) duplicateSelected();
+      return;
+    }
+    // Select All: Ctrl+A — блокирует выделение текста страницы
+    if (code === 'KeyA') {
+      e.preventDefault(); e.stopPropagation();
+      if (!isEditing) selectAll();
+      return;
+    }
+    // Ctrl+S — блокируем «Сохранить страницу» браузера
+    if (code === 'KeyS') {
+      e.preventDefault(); e.stopPropagation();
+      return;
+    }
   }
 
   if (isEditing) return;
 
+  // ── Single-key shortcuts (only when not editing) ─────────────
+
+  // Delete / Backspace — e.preventDefault() MUST be called first to stop browser back-navigation
   if (e.key === 'Delete' || e.key === 'Backspace') {
+    e.preventDefault(); e.stopPropagation();
     let changed = false;
     if (selectedId) {
       const hasEdge = edges.find(ed => ed.id === selectedId);
@@ -2003,10 +3554,36 @@ document.addEventListener('keydown', e => {
       selectedIds.clear();
     }
     render(); updateProps(); updateStatus();
+    return;
   }
 
-  if (e.key === 'Escape') { connectingFrom = null; connectingTemp = null; selectedId = null; selectedIds.clear(); render(); updateProps(); }
-}, true); // capture phase — intercepts before browser default (undo/redo handled safely)
+  // Escape — deselect / cancel connecting
+  if (e.key === 'Escape') {
+    e.preventDefault(); e.stopPropagation();
+    connectingFrom = null; connectingTemp = null; snapTarget = null;
+    selectedId = null; selectedIds.clear();
+    render(); updateProps();
+    return;
+  }
+
+  // Arrow keys — nudge selected nodes (1px normal, 10px with Shift)
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+    const hasSelection = selectedIds.size > 0 || (selectedId && nodes.find(n => n.id === selectedId));
+    if (!hasSelection) return;
+    e.preventDefault(); e.stopPropagation();
+    const step = e.shiftKey ? 10 : 1;
+    const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
+    const dy = e.key === 'ArrowUp'   ? -step : e.key === 'ArrowDown'  ? step : 0;
+    saveHistory();
+    const ids = selectedIds.size > 0 ? [...selectedIds] : [selectedId];
+    nodes.forEach(n => {
+      if (ids.includes(n.id)) { n.x += dx; n.y += dy; }
+    });
+    render(); updateProps(); updateStatus();
+    return;
+  }
+
+}, true); // capture phase — runs before any child handler and before browser defaults
 
 // ============================================================
 // TOOLBAR BUTTONS
@@ -2095,14 +3672,16 @@ document.getElementById('btnImportApply').addEventListener('click', () => {
 // ============================================================
 function loadDemo() {
   nodes = [
-    { id:'n1', type:'start',    x:260, y:40,  w:120, h:44,  label:'Начало',    color:'#4fffb0' },
-    { id:'n2', type:'process',  x:240, y:140, w:160, h:54,  label:'Подготовка\nданных', color:'#6b8aff' },
-    { id:'n3', type:'decision', x:245, y:255, w:150, h:80,  label:'Данные\nвалидны?', color:'#c084fc' },
-    { id:'n4', type:'io',       x:420, y:285, w:140, h:50,  label:'Вывод ошибки', color:'#ff6b6b' },
-    { id:'n5', type:'process',  x:240, y:400, w:160, h:54,  label:'Обработка',  color:'#6b8aff' },
-    { id:'n6', type:'io',       x:240, y:515, w:160, h:50,  label:'Вывод результата', color:'#fbbf24' },
-    { id:'n7', type:'start',    x:260, y:625, w:120, h:44,  label:'Конец',      color:'#4fffb0' },
+    { id:'n1', type:'start',    x:260, y:40,  w:120, h:40,  label:'Начало',             color:'#000000', paramA:80 },
+    { id:'n2', type:'process',  x:260, y:160, w:120, h:80,  label:'Подготовка\nданных', color:'#000000', paramA:80 },
+    { id:'n3', type:'decision', x:260, y:310, w:120, h:80,  label:'Данные\nвалидны?',   color:'#000000', paramA:80 },
+    { id:'n4', type:'io',       x:440, y:340, w:120, h:80,  label:'Вывод ошибки',       color:'#000000', paramA:80 },
+    { id:'n5', type:'process',  x:260, y:460, w:120, h:80,  label:'Обработка',          color:'#000000', paramA:80 },
+    { id:'n6', type:'io',       x:260, y:610, w:120, h:80,  label:'Вывод результата',   color:'#000000', paramA:80 },
+    { id:'n7', type:'start',    x:260, y:760, w:120, h:40,  label:'Конец',              color:'#000000', paramA:80 },
   ];
+  // Ensure all parameterised nodes have correct dimensions
+  nodes.forEach(n => { if (n.paramA !== undefined) applyParamA(n, n.paramA); });
   edges = [
     { id:'e1', from:'n1', to:'n2', fromPort:'b', toPort:'t', label:'' },
     { id:'e2', from:'n2', to:'n3', fromPort:'b', toPort:'t', label:'' },
@@ -2119,6 +3698,493 @@ function loadDemo() {
 
 loadDemo();
 setDiagramStyle('gost');
+
+// ============================================================
+// SHEETS (Excel-like tabs)
+// ============================================================
+let sheets = [
+  { id: 's1', name: 'Лист 1', nodes: JSON.parse(JSON.stringify(nodes)), edges: JSON.parse(JSON.stringify(edges)) }
+];
+let activeSheetId = 's1';
+let sheetIdCounter = 2;
+let renameTargetId = null;
+
+function getSheetTabColors() {
+  const dark = document.documentElement.classList.contains('dark');
+  return {
+    activeBg:    dark ? '#131828' : '#ffffff',
+    activeBorder: '#4fffb0',
+    activeFg:    dark ? '#e8eaf0' : '#1a202c',
+    inactiveBg:  dark ? '#0e1220' : '#e8ecf4',
+    inactiveFg:  dark ? '#6b7280' : '#9ca3af',
+    hoverBg:     dark ? '#131828' : '#f0f2f7',
+    hoverFg:     dark ? '#d1d5db' : '#4b5563',
+  };
+}
+
+function renderSheetTabs() {
+  const container = document.getElementById('sheetTabsContainer');
+  const c = getSheetTabColors();
+  container.innerHTML = '';
+
+  sheets.forEach(sheet => {
+    const isActive = sheet.id === activeSheetId;
+
+    const tab = document.createElement('div');
+    tab.dataset.sheetId = sheet.id;
+    tab.title = 'Двойной клик — переименовать';
+    tab.style.cssText = `
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 0 10px 0 11px;
+      height: ${isActive ? '26px' : '22px'};
+      margin-bottom: ${isActive ? '0' : '0'};
+      cursor: pointer;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: ${isActive ? '600' : '400'};
+      white-space: nowrap;
+      user-select: none;
+      background: ${isActive ? c.activeBg : c.inactiveBg};
+      color: ${isActive ? c.activeFg : c.inactiveFg};
+      border-top: 2px solid ${isActive ? c.activeBorder : 'rgba(128,128,128,0.25)'};
+      border-left: 1px solid ${isActive ? 'rgba(79,255,176,0.2)' : 'rgba(128,128,128,0.15)'};
+      border-right: 1px solid ${isActive ? 'rgba(79,255,176,0.2)' : 'rgba(128,128,128,0.15)'};
+      border-bottom: none;
+      border-radius: 4px 4px 0 0;
+      transition: color 0.15s, height 0.1s;
+      align-self: flex-end;
+      flex-shrink: 0;
+    `;
+
+    const label = document.createElement('span');
+    label.textContent = sheet.name;
+    tab.appendChild(label);
+
+    // Close button (only show on active or hover)
+    if (sheets.length > 1) {
+      const closeBtn = document.createElement('span');
+      closeBtn.textContent = '×';
+      closeBtn.style.cssText = `
+        font-size:13px;line-height:1;opacity:${isActive ? '0.5' : '0'};
+        margin-left:2px;border-radius:3px;padding:0 2px;transition:opacity 0.15s,background 0.15s;
+      `;
+      closeBtn.addEventListener('mouseenter', () => { closeBtn.style.opacity = '1'; });
+      closeBtn.addEventListener('mouseleave', () => { closeBtn.style.opacity = isActive ? '0.5' : '0'; });
+      closeBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        deleteSheet(sheet.id);
+      });
+      tab.appendChild(closeBtn);
+
+      tab.addEventListener('mouseenter', () => { if (!isActive) closeBtn.style.opacity = '0.4'; });
+      tab.addEventListener('mouseleave', () => { if (!isActive) closeBtn.style.opacity = '0'; });
+    }
+
+    // Single click → switch
+    tab.addEventListener('click', () => switchSheet(sheet.id));
+    // Double click → rename
+    tab.addEventListener('dblclick', e => { e.stopPropagation(); openRenameModal(sheet.id, sheet.name); });
+    // Right click → context menu
+    tab.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); showSheetContextMenu(e, sheet.id, sheet.name); });
+
+    if (!isActive) {
+      tab.addEventListener('mouseenter', () => { tab.style.color = c.hoverFg; tab.style.background = c.hoverBg; tab.style.height = '24px'; });
+      tab.addEventListener('mouseleave', () => { tab.style.color = c.inactiveFg; tab.style.background = c.inactiveBg; tab.style.height = '22px'; });
+    }
+
+    container.appendChild(tab);
+  });
+
+  // Style the + button to match inactive tabs
+  const addBtn = document.getElementById('btnAddSheet');
+  if (addBtn) {
+    const c2 = getSheetTabColors();
+    addBtn.style.background = c2.inactiveBg;
+    addBtn.style.borderRadius = '4px 4px 0 0';
+    addBtn.style.border = '1px solid rgba(128,128,128,0.15)';
+    addBtn.style.borderTop = '2px solid rgba(128,128,128,0.25)';
+    addBtn.style.borderBottom = 'none';
+    addBtn.style.color = c2.inactiveFg;
+    addBtn.style.height = '22px';
+    addBtn.style.alignSelf = 'flex-end';
+    addBtn.onmouseenter = () => { addBtn.style.background = c2.hoverBg; addBtn.style.opacity = '1'; };
+    addBtn.onmouseleave = () => { addBtn.style.background = c2.inactiveBg; addBtn.style.opacity = '0.6'; };
+  }
+}
+
+function saveCurrentSheet() {
+  const sheet = sheets.find(s => s.id === activeSheetId);
+  if (!sheet) return;
+  sheet.nodes = JSON.parse(JSON.stringify(nodes));
+  sheet.edges = JSON.parse(JSON.stringify(edges));
+}
+
+function switchSheet(id) {
+  if (id === activeSheetId) return;
+  saveCurrentSheet();
+  activeSheetId = id;
+  const sheet = sheets.find(s => s.id === id);
+  nodes = JSON.parse(JSON.stringify(sheet.nodes));
+  edges = JSON.parse(JSON.stringify(sheet.edges));
+  selectedId = null; selectedIds.clear();
+  history = []; historyIndex = -1;
+  render(); updateProps(); updateStatus();
+  renderSheetTabs();
+}
+
+function addSheet() {
+  saveCurrentSheet();
+  const id = 's' + (sheetIdCounter++);
+  const name = 'Лист ' + (sheets.length + 1);
+  sheets.push({ id, name, nodes: [], edges: [] });
+  activeSheetId = id;
+  nodes = []; edges = [];
+  selectedId = null; selectedIds.clear();
+  history = []; historyIndex = -1;
+  render(); updateProps(); updateStatus();
+  renderSheetTabs();
+  // Scroll to end
+  setTimeout(() => {
+    const c = document.getElementById('sheetTabsContainer');
+    c.scrollLeft = c.scrollWidth;
+  }, 50);
+}
+
+function deleteSheet(id) {
+  if (sheets.length <= 1) return;
+  const idx = sheets.findIndex(s => s.id === id);
+  sheets.splice(idx, 1);
+  if (activeSheetId === id) {
+    const nextIdx = Math.min(idx, sheets.length - 1);
+    activeSheetId = sheets[nextIdx].id;
+    const sheet = sheets[nextIdx];
+    nodes = JSON.parse(JSON.stringify(sheet.nodes));
+    edges = JSON.parse(JSON.stringify(sheet.edges));
+    selectedId = null; selectedIds.clear();
+    history = []; historyIndex = -1;
+    render(); updateProps(); updateStatus();
+  }
+  renderSheetTabs();
+}
+
+function duplicateSheet(id) {
+  saveCurrentSheet();
+  const src = sheets.find(s => s.id === id);
+  if (!src) return;
+  const newId = 's' + (sheetIdCounter++);
+  const newName = src.name + ' (копия)';
+  const srcIdx = sheets.findIndex(s => s.id === id);
+  sheets.splice(srcIdx + 1, 0, {
+    id: newId,
+    name: newName,
+    nodes: JSON.parse(JSON.stringify(src.nodes)),
+    edges: JSON.parse(JSON.stringify(src.edges)),
+  });
+  activeSheetId = newId;
+  nodes = JSON.parse(JSON.stringify(src.nodes));
+  edges = JSON.parse(JSON.stringify(src.edges));
+  selectedId = null; selectedIds.clear();
+  history = []; historyIndex = -1;
+  render(); updateProps(); updateStatus();
+  renderSheetTabs();
+  setTimeout(() => {
+    const tab = document.querySelector(`[data-sheet-id="${newId}"]`);
+    if (tab) tab.scrollIntoView({ inline: 'nearest' });
+  }, 50);
+}
+
+// ---- Sheet context menu ----
+let _sheetCtxMenu = null;
+function showSheetContextMenu(e, id, name) {
+  removeSheetContextMenu();
+  const dark = document.documentElement.classList.contains('dark');
+  const menu = document.createElement('div');
+  menu.id = 'sheetCtxMenu';
+  menu.style.cssText = `
+    position:fixed;left:${e.clientX}px;top:-9999px;z-index:3000;
+    min-width:160px;border-radius:8px;overflow:hidden;
+    background:${dark ? '#131828' : '#ffffff'};
+    border:1px solid ${dark ? '#1e2540' : '#dde1ec'};
+    box-shadow:0 8px 24px rgba(0,0,0,0.35);
+    font-family:'JetBrains Mono',monospace;font-size:11px;
+  `;
+  const items = [
+    { label: '✏️  Переименовать', action: () => openRenameModal(id, name) },
+    { label: '⧉  Дублировать', action: () => duplicateSheet(id) },
+    { label: '🗑  Удалить', action: () => deleteSheet(id), danger: true, disabled: sheets.length <= 1 },
+  ];
+  items.forEach(item => {
+    const el = document.createElement('div');
+    el.textContent = item.label;
+    el.style.cssText = `
+      padding:7px 14px;cursor:${item.disabled ? 'not-allowed' : 'pointer'};
+      color:${item.disabled ? (dark ? '#4b5563' : '#9ca3af') : item.danger ? '#ff6b6b' : (dark ? '#e8eaf0' : '#1a202c')};
+      transition:background 0.1s;
+    `;
+    if (!item.disabled) {
+      el.addEventListener('mouseenter', () => el.style.background = dark ? '#1e2540' : '#f0f2f7');
+      el.addEventListener('mouseleave', () => el.style.background = 'transparent');
+      el.addEventListener('click', () => { removeSheetContextMenu(); item.action(); });
+    }
+    menu.appendChild(el);
+  });
+  document.body.appendChild(menu);
+  _sheetCtxMenu = menu;
+  // Position strictly above the click point
+  const mh = menu.offsetHeight;
+  menu.style.top = (e.clientY - mh) + 'px';
+  setTimeout(() => document.addEventListener('click', removeSheetContextMenu, { once: true }), 0);
+}
+function removeSheetContextMenu() {
+  if (_sheetCtxMenu) { _sheetCtxMenu.remove(); _sheetCtxMenu = null; }
+}
+
+function openRenameModal(id, currentName) {
+  renameTargetId = id;
+  const modal = document.getElementById('sheetRenameModal');
+  const input = document.getElementById('sheetRenameInput');
+  input.value = currentName;
+  modal.style.display = 'flex';
+  setTimeout(() => { input.focus(); input.select(); }, 50);
+}
+
+document.getElementById('sheetRenameCancel').addEventListener('click', () => {
+  document.getElementById('sheetRenameModal').style.display = 'none';
+  renameTargetId = null;
+});
+
+document.getElementById('sheetRenameOk').addEventListener('click', () => {
+  const input = document.getElementById('sheetRenameInput');
+  const name = input.value.trim();
+  if (name && renameTargetId) {
+    const sheet = sheets.find(s => s.id === renameTargetId);
+    if (sheet) sheet.name = name;
+    renderSheetTabs();
+  }
+  document.getElementById('sheetRenameModal').style.display = 'none';
+  renameTargetId = null;
+});
+
+document.getElementById('sheetRenameInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('sheetRenameOk').click();
+  if (e.key === 'Escape') document.getElementById('sheetRenameCancel').click();
+});
+
+// ============================================================
+// CUSTOM POINTS EDITOR (в панели свойств)
+// ============================================================
+let cpDragSrcIdx = null;
+
+function renderCustomPointsList(node) {
+  const list = document.getElementById('customPointsList');
+  if (!list || !node || !node.customPoints) return;
+  list.innerHTML = '';
+  const dark = document.documentElement.classList.contains('dark');
+
+  node.customPoints.forEach(([rx, ry], i) => {
+    const row = document.createElement('div');
+    row.dataset.idx = i;
+    row.style.cssText = `
+      display:flex;align-items:center;gap:4px;
+      padding:3px 4px;border-radius:5px;
+      border:1px solid ${dark?'#1e2540':'#dde1ec'};
+      background:${dark?'#131828':'#f5f7fb'};
+      cursor:default;
+      transition:background 0.12s;
+    `;
+    row.draggable = true;
+
+    // Hover: highlight point on canvas
+    row.addEventListener('mouseenter', () => {
+      hoveredCustomPtIdx = i;
+      render();
+    });
+    row.addEventListener('mouseleave', () => {
+      hoveredCustomPtIdx = -1;
+      render();
+    });
+
+    // Drag handle
+    const handle = document.createElement('span');
+    handle.textContent = '⠿';
+    handle.style.cssText = 'font-size:11px;cursor:grab;opacity:0.5;flex-shrink:0;user-select:none;';
+    row.appendChild(handle);
+
+    // Index badge
+    const badge = document.createElement('span');
+    const isFirstBadge = i === 0;
+    badge.textContent = `P${i + 1}`;
+    badge.style.cssText = `
+      font-family:monospace;font-size:9px;font-weight:700;
+      color:${isFirstBadge ? '#4fffb0' : '#a78bfa'};
+      flex-shrink:0;min-width:20px;text-align:center;
+      background:${isFirstBadge ? 'rgba(79,255,176,0.12)' : 'rgba(167,139,250,0.12)'};
+      border:1px solid ${isFirstBadge ? 'rgba(79,255,176,0.4)' : 'rgba(167,139,250,0.4)'};
+      border-radius:3px;padding:0 2px;line-height:14px;
+    `;
+    row.appendChild(badge);
+
+    // X input
+    const xLabel = document.createElement('span');
+    xLabel.textContent = 'X';
+    xLabel.style.cssText = 'font-family:monospace;font-size:9px;opacity:0.5;flex-shrink:0;';
+    const xInput = document.createElement('input');
+    xInput.type = 'number';
+    xInput.step = '1';
+    xInput.value = Math.round(node.x + rx * node.w);
+    xInput.style.cssText = `
+      width:44px;font-family:monospace;font-size:10px;
+      background:${dark?'#0e1220':'#fff'};
+      border:1px solid ${dark?'#1e2540':'#dde1ec'};
+      color:${dark?'#e8eaf0':'#1a202c'};
+      border-radius:4px;padding:1px 4px;outline:none;text-align:center;
+    `;
+    xInput.addEventListener('focus', () => saveHistory());
+    xInput.addEventListener('change', () => {
+      const n = nodes.find(n=>n.id===selectedId);
+      if (!n || !n.customPoints) return;
+      const absX = parseFloat(xInput.value);
+      if (isNaN(absX)) return;
+      // Rebuild absolute points, change this one
+      const absPts = n.customPoints.map(([r,s]) => [n.x+r*n.w, n.y+s*n.h]);
+      absPts[i][0] = absX;
+      rebuildNodeFromAbsPoints(n, absPts);
+      render(); updateProps();
+    });
+
+    // Y input
+    const yLabel = document.createElement('span');
+    yLabel.textContent = 'Y';
+    yLabel.style.cssText = 'font-family:monospace;font-size:9px;opacity:0.5;flex-shrink:0;';
+    const yInput = document.createElement('input');
+    yInput.type = 'number';
+    yInput.step = '1';
+    yInput.value = Math.round(node.y + ry * node.h);
+    yInput.style.cssText = xInput.style.cssText;
+    yInput.addEventListener('focus', () => saveHistory());
+    yInput.addEventListener('change', () => {
+      const n = nodes.find(n=>n.id===selectedId);
+      if (!n || !n.customPoints) return;
+      const absY = parseFloat(yInput.value);
+      if (isNaN(absY)) return;
+      const absPts = n.customPoints.map(([r,s]) => [n.x+r*n.w, n.y+s*n.h]);
+      absPts[i][1] = absY;
+      rebuildNodeFromAbsPoints(n, absPts);
+      render(); updateProps();
+    });
+
+    // Delete button
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '✕';
+    delBtn.style.cssText = `
+      font-size:9px;cursor:pointer;flex-shrink:0;
+      background:transparent;border:none;
+      color:#ff6b6b;padding:0 2px;line-height:1;
+      opacity:0.7;
+    `;
+    delBtn.title = 'Удалить точку';
+    delBtn.addEventListener('click', () => {
+      const n = nodes.find(n=>n.id===selectedId);
+      if (!n || !n.customPoints || n.customPoints.length <= 3) return;
+      saveHistory();
+      const absPts = n.customPoints.map(([r,s]) => [n.x+r*n.w, n.y+s*n.h]);
+      absPts.splice(i, 1);
+      rebuildNodeFromAbsPoints(n, absPts);
+      render(); updateProps();
+    });
+    // Disable if only 3 points
+    if (node.customPoints.length <= 3) { delBtn.style.opacity = '0.2'; delBtn.disabled = true; }
+
+    row.appendChild(xLabel); row.appendChild(xInput);
+    row.appendChild(yLabel); row.appendChild(yInput);
+    row.appendChild(delBtn);
+
+    // Drag-and-drop reorder
+    row.addEventListener('dragstart', e => {
+      cpDragSrcIdx = i;
+      e.dataTransfer.effectAllowed = 'move';
+      row.style.opacity = '0.4';
+    });
+    row.addEventListener('dragend', () => {
+      row.style.opacity = '1';
+      cpDragSrcIdx = null;
+      document.querySelectorAll('#customPointsList > div').forEach(r => r.style.borderColor = '');
+    });
+    row.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      row.style.borderColor = '#a78bfa';
+    });
+    row.addEventListener('dragleave', () => {
+      row.style.borderColor = '';
+    });
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      row.style.borderColor = '';
+      if (cpDragSrcIdx === null || cpDragSrcIdx === i) return;
+      const n = nodes.find(n=>n.id===selectedId);
+      if (!n || !n.customPoints) return;
+      saveHistory();
+      const absPts = n.customPoints.map(([r,s]) => [n.x+r*n.w, n.y+s*n.h]);
+      const [moved] = absPts.splice(cpDragSrcIdx, 1);
+      absPts.splice(i, 0, moved);
+      rebuildNodeFromAbsPoints(n, absPts);
+      render(); updateProps();
+    });
+
+    list.appendChild(row);
+  });
+}
+
+function rebuildNodeFromAbsPoints(node, absPts) {
+  if (!absPts || absPts.length < 3) return;
+  const xs = absPts.map(p => p[0]);
+  const ys = absPts.map(p => p[1]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const bw = maxX - minX || 1;
+  const bh = maxY - minY || 1;
+  node.x = minX; node.y = minY;
+  node.w = bw;   node.h = bh;
+  node.customPoints = absPts.map(([ax,ay]) => [(ax-minX)/bw, (ay-minY)/bh]);
+}
+
+document.getElementById('btnAddCustomPoint').addEventListener('click', () => {
+  const node = nodes.find(n=>n.id===selectedId && n.type==='custom');
+  if (!node || !node.customPoints) return;
+  saveHistory();
+  // Add a new point at midpoint of last edge
+  const pts = node.customPoints;
+  const last = pts[pts.length - 1];
+  const first = pts[0];
+  const newRx = (last[0] + first[0]) / 2;
+  const newRy = (last[1] + first[1]) / 2;
+  node.customPoints = [...pts.slice(0, -1), [newRx, newRy], last];
+  render(); updateProps();
+});
+
+document.getElementById('btnAddSheet').addEventListener('click', addSheet);
+
+// Update sheet tabs when theme changes
+const _origApplyTheme = applyTheme;
+// Re-render tabs on theme change (already wrapped via themeToggle listener)
+themeToggle.addEventListener('change', () => setTimeout(renderSheetTabs, 10));
+
+// Initial render
+renderSheetTabs();
+
+// Save sheet state before clear
+const origBtnClear = document.getElementById('btnClear');
+origBtnClear.addEventListener('click', () => {
+  setTimeout(() => {
+    saveCurrentSheet();
+    const sh = sheets.find(s => s.id === activeSheetId);
+    if (sh) { sh.nodes = []; sh.edges = []; }
+  }, 100);
+}, true);
 </script>
 </body>
 </html>
