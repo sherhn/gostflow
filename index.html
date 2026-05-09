@@ -1077,178 +1077,11 @@ function vSegIntersectsRect(px, ya, yb, rect) {
   return px > rect.x && px < rect.x + rect.w && ymax > rect.y && ymin < rect.y + rect.h;
 }
 
-const STUB = 24; // stub length coming out of port
-const AVOID_MARGIN = 18; // margin around nodes for routing
+// (routing functions replaced by A*-based system below)
 
-// Build orthogonal route as a list of [x, y] waypoints.
-// The route always has:
-//   - segment 0: stub out of from-port (fixed direction)
-//   - segment N: stub into to-port (fixed direction, reversed)
-//   - middle segments: routed around obstacles
-// edgeOffsets on the edge allow manual nudging of each middle segment
-function buildOrthogonalWaypoints(edge, src, dst) {
-  const srcPorts = getPorts(src);
-  const dstPorts = getPorts(dst);
-  let sp = edge.fromPort ? srcPorts.find(p => p.id === edge.fromPort) || srcPorts[2] : srcPorts[2];
-  let ep = edge.toPort   ? dstPorts.find(p => p.id === edge.toPort)   || dstPorts[0] : dstPorts[0];
-  // For parallel nodes, use the stored attach X if available
-  if (sp && sp.isLine && edge.fromPortX !== undefined) {
-    sp = { ...sp, px: Math.max(src.x, Math.min(edge.fromPortX, src.x + src.w)) };
-  }
-  if (ep && ep.isLine && edge.toPortX !== undefined) {
-    ep = { ...ep, px: Math.max(dst.x, Math.min(edge.toPortX, dst.x + dst.w)) };
-  }
-
-  const fd = getPortDir(sp.id);
-  const td = getPortDir(ep.id);
-
-  // Stub endpoints
-  const sx = sp.px + fd[0] * STUB;
-  const sy = sp.py + fd[1] * STUB;
-  const ex = ep.px + td[0] * STUB;
-  const ey = ep.py + td[1] * STUB;
-
-  // All other nodes as obstacles (exclude src, dst, and text nodes — text is decorative)
-  const obstacles = nodes
-    .filter(n => n.id !== src.id && n.id !== dst.id && n.type !== 'text')
-    .map(n => getNodeRect(n, AVOID_MARGIN));
-
-  // Also add src and dst themselves as partial obstacles (prevent re-entry)
-  const srcRect = getNodeRect(src, AVOID_MARGIN);
-  const dstRect = getNodeRect(dst, AVOID_MARGIN);
-
-  // Build middle route from (sx,sy) to (ex,ey) given fd and td
-  const midPts = routeMiddle(sx, sy, fd, ex, ey, td, obstacles, srcRect, dstRect, edge);
-
-  // Full waypoints
-  const pts = [[sp.px, sp.py], [sx, sy], ...midPts, [ex, ey], [ep.px, ep.py]];
-  return { pts, sp, ep };
-}
-
-// Route middle segments between stub exit (sx,sy) going fd, and stub entry (ex,ey) going td
-// Returns array of intermediate waypoints (not including start/end stubs)
-function routeMiddle(sx, sy, fd, ex, ey, td, obstacles, srcRect, dstRect, edge) {
-  // Apply edge offsets (manual nudging by user)
-  const offsets = edge.segOffsets || {};
-
-  const fdH = fd[0] !== 0; // from direction is horizontal
-  const tdH = td[0] !== 0; // to direction is horizontal
-
-  let pts = [];
-
-  if (fdH && tdH) {
-    // Both horizontal: need vertical connector
-    let mx = (sx + ex) / 2;
-    if (offsets.mid_x !== undefined) mx = offsets.mid_x;
-    else {
-      // Avoid obstacles
-      mx = avoidVerticalLine(mx, Math.min(sy, ey), Math.max(sy, ey), obstacles, srcRect, dstRect);
-    }
-    pts = [[mx, sy], [mx, ey]];
-  } else if (!fdH && !tdH) {
-    // Both vertical: need horizontal connector
-    let my = (sy + ey) / 2;
-    if (offsets.mid_y !== undefined) my = offsets.mid_y;
-    else {
-      my = avoidHorizontalLine(my, Math.min(sx, ex), Math.max(sx, ex), obstacles, srcRect, dstRect);
-    }
-    pts = [[sx, my], [ex, my]];
-  } else if (!fdH && tdH) {
-    // from vertical, to horizontal: L-shape, bend at (sx, ey) or (ex, sy)
-    // Try direct L-shape first
-    let useAlt = false;
-    if (offsets.corner === 'alt') useAlt = true;
-    else {
-      // Check if direct path intersects source rect
-      const corner1Blocked = vSegIntersectsRect(sx, sy, ey, srcRect) || vSegIntersectsRect(sx, sy, ey, dstRect);
-      const corner2Blocked = hSegIntersectsRect(ey, sx, ex, srcRect) || hSegIntersectsRect(ey, sx, ex, dstRect);
-      if (corner1Blocked || corner2Blocked) useAlt = true;
-    }
-    if (!useAlt) {
-      pts = [[sx, ey]];
-    } else {
-      // Route around: go further out then turn
-      const extraX = offsets.extra_x !== undefined ? offsets.extra_x : avoidPoint(ex, 'x', obstacles, srcRect, dstRect);
-      pts = [[sx, sy - Math.sign(fd[1]) * AVOID_MARGIN * 0.5], [extraX, sy - Math.sign(fd[1]) * AVOID_MARGIN * 0.5], [extraX, ey]];
-    }
-  } else {
-    // from horizontal, to vertical: L-shape, bend at (ex, sy)
-    let useAlt = false;
-    if (offsets.corner === 'alt') useAlt = true;
-    else {
-      const corner1Blocked = hSegIntersectsRect(sy, sx, ex, srcRect) || hSegIntersectsRect(sy, sx, ex, dstRect);
-      const corner2Blocked = vSegIntersectsRect(ex, sy, ey, srcRect) || vSegIntersectsRect(ex, sy, ey, dstRect);
-      if (corner1Blocked || corner2Blocked) useAlt = true;
-    }
-    if (!useAlt) {
-      pts = [[ex, sy]];
-    } else {
-      const extraY = offsets.extra_y !== undefined ? offsets.extra_y : avoidPoint(ey, 'y', obstacles, srcRect, dstRect);
-      pts = [[sx, extraY], [ex, extraY]];
-    }
-  }
-
-  // Apply user nudge offsets to middle segments
-  // If we have pts forming horizontal/vertical segments, shift them
-  if (offsets.seg0 !== undefined && pts.length >= 2) {
-    const isHoriz = Math.abs(pts[0][1] - pts[1][1]) < 1;
-    if (isHoriz) pts[0][1] = pts[1][1] = offsets.seg0;
-  }
-
-  return pts;
-}
-
-function avoidHorizontalLine(my, xmin, xmax, obstacles, srcRect, dstRect) {
-  const allRects = [...obstacles, srcRect, dstRect];
-  let iters = 0;
-  while (iters++ < 10) {
-    let blocked = false;
-    for (const r of allRects) {
-      if (hSegIntersectsRect(my, xmin, xmax, r)) {
-        // Move below the rect
-        my = r.y + r.h + 8;
-        blocked = true; break;
-      }
-    }
-    if (!blocked) break;
-  }
-  return my;
-}
-
-function avoidVerticalLine(mx, ymin, ymax, obstacles, srcRect, dstRect) {
-  const allRects = [...obstacles, srcRect, dstRect];
-  let iters = 0;
-  while (iters++ < 10) {
-    let blocked = false;
-    for (const r of allRects) {
-      if (vSegIntersectsRect(mx, ymin, ymax, r)) {
-        mx = r.x + r.w + 8;
-        blocked = true; break;
-      }
-    }
-    if (!blocked) break;
-  }
-  return mx;
-}
-
-function avoidPoint(v, axis, obstacles, srcRect, dstRect) {
-  const allRects = [...obstacles, srcRect, dstRect];
-  let iters = 0;
-  while (iters++ < 8) {
-    let blocked = false;
-    for (const r of allRects) {
-      const inRange = axis === 'x'
-        ? (v > r.x && v < r.x + r.w)
-        : (v > r.y && v < r.y + r.h);
-      if (inRange) {
-        v = axis === 'x' ? r.x + r.w + 8 : r.y + r.h + 8;
-        blocked = true; break;
-      }
-    }
-    if (!blocked) break;
-  }
-  return v;
-}
+// ============================================================
+// ORTHOGONAL ROUTER — A*-based, strict 90° turns, obstacle-aware
+// ============================================================
 
 function waypointsToPath(pts) {
   if (!pts || pts.length < 2) return '';
@@ -1257,6 +1090,316 @@ function waypointsToPath(pts) {
     d += ` L${pts[i][0]},${pts[i][1]}`;
   }
   return d;
+}
+
+// Check if a horizontal segment (y=py, x from xa to xb) is blocked by a rect
+function hSegBlockedByRect(py, xa, xb, rect) {
+  const xmin = Math.min(xa, xb), xmax = Math.max(xa, xb);
+  return py > rect.y && py < rect.y + rect.h &&
+         xmax > rect.x + 1 && xmin < rect.x + rect.w - 1;
+}
+
+// Check if a vertical segment (x=px, y from ya to yb) is blocked by a rect
+function vSegBlockedByRect(px, ya, yb, rect) {
+  const ymin = Math.min(ya, yb), ymax = Math.max(ya, yb);
+  return px > rect.x && px < rect.x + rect.w &&
+         ymax > rect.y + 1 && ymin < rect.y + rect.h - 1;
+}
+
+// Check if an orthogonal segment is clear of all obstacle rects
+function segmentClear(ax, ay, bx, by, blockers) {
+  if (Math.abs(ax - bx) < 0.5) {
+    // vertical
+    for (const r of blockers) { if (vSegBlockedByRect(ax, ay, by, r)) return false; }
+  } else {
+    // horizontal
+    for (const r of blockers) { if (hSegBlockedByRect(ay, ax, bx, r)) return false; }
+  }
+  return true;
+}
+
+// Robust A*-based orthogonal router for one edge
+// Returns { pts, sp, ep }
+function buildOrthogonalWaypoints(edge, src, dst) {
+  const MARGIN = 20;
+  const STUB = 28;
+
+  const srcPorts = getPorts(src);
+  const dstPorts = getPorts(dst);
+  let sp = edge.fromPort ? srcPorts.find(p => p.id === edge.fromPort) || srcPorts[2] : srcPorts[2];
+  let ep = edge.toPort   ? dstPorts.find(p => p.id === edge.toPort)   || dstPorts[0] : dstPorts[0];
+  if (sp && sp.isLine && edge.fromPortX !== undefined)
+    sp = { ...sp, px: Math.max(src.x, Math.min(edge.fromPortX, src.x + src.w)) };
+  if (ep && ep.isLine && edge.toPortX !== undefined)
+    ep = { ...ep, px: Math.max(dst.x, Math.min(edge.toPortX, dst.x + dst.w)) };
+
+  const fd = getPortDir(sp.id);
+  const td = getPortDir(ep.id);
+
+  // Stub exit/entry points (guaranteed outside the shape)
+  const sx = sp.px + fd[0] * STUB;
+  const sy = sp.py + fd[1] * STUB;
+  const ex = ep.px + td[0] * STUB;
+  const ey = ep.py + td[1] * STUB;
+
+  // Blocker rects: all nodes except src/dst (with margin)
+  const blockers = nodes
+    .filter(n => n.id !== src.id && n.id !== dst.id && n.type !== 'text')
+    .map(n => ({ x: n.x - MARGIN, y: n.y - MARGIN, w: n.w + MARGIN*2, h: n.h + MARGIN*2 }));
+
+  // Also add src and dst themselves to prevent U-turns back through them
+  blockers.push({ x: src.x - MARGIN/2, y: src.y - MARGIN/2, w: src.w + MARGIN, h: src.h + MARGIN });
+  blockers.push({ x: dst.x - MARGIN/2, y: dst.y - MARGIN/2, w: dst.w + MARGIN, h: dst.h + MARGIN });
+
+  // Check if user has manually repositioned a segment — respect it
+  const offsets = edge.segOffsets || {};
+  let midPts = null;
+
+  // Stub src offset: user dragged the first stub segment sideways
+  // We insert an extra bend: port → stub1 → corner → stub2_exit
+  let actualSx = sx, actualSy = sy;
+  let srcExtraPts = [];
+  if (offsets.stub_src_offset !== undefined) {
+    const off = offsets.stub_src_offset;
+    if (fd[0] !== 0) {
+      // fd is horizontal → stub goes H, user nudged it V → new Y = off
+      // port.y stays, stub moves to off, then a vertical segment connects them
+      // New stub exit moves to (sx, off), preceded by vertical segment (sp.px, sp.py)→(sp.px, off)→(sx, off)
+      srcExtraPts = [[sp.px, off]];
+      actualSy = off;
+    } else {
+      // fd is vertical → stub goes V, user nudged it H → new X = off
+      srcExtraPts = [[off, sp.py]];
+      actualSx = off;
+    }
+  }
+
+  // Stub dst offset: user dragged the last stub segment sideways
+  let actualEx = ex, actualEy = ey;
+  let dstExtraPts = [];
+  if (offsets.stub_dst_offset !== undefined) {
+    const off = offsets.stub_dst_offset;
+    if (td[0] !== 0) {
+      // td is horizontal → last stub goes H, user nudged it V → new Y = off
+      dstExtraPts = [[ep.px, off]];
+      actualEy = off;
+    } else {
+      // td is vertical → last stub goes V, user nudged it H → new X = off
+      dstExtraPts = [[off, ep.py]];
+      actualEx = off;
+    }
+  }
+
+  if (offsets.manual && offsets.pts) {
+    midPts = offsets.pts;
+  } else {
+    midPts = aStarRouteSegment(actualSx, actualSy, fd, actualEx, actualEy, td, blockers, offsets);
+  }
+
+  // Full waypoints: port → [extra src bend] → stub → mid → stub → [extra dst bend] → port
+  const pts = [
+    [sp.px, sp.py],
+    ...srcExtraPts,
+    [actualSx, actualSy],
+    ...midPts,
+    [actualEx, actualEy],
+    ...dstExtraPts,
+    [ep.px, ep.py],
+  ];
+
+  // Deduplicate consecutive equal points
+  const deduped = [pts[0]];
+  for (let i = 1; i < pts.length; i++) {
+    if (Math.abs(pts[i][0] - deduped[deduped.length-1][0]) > 0.5 ||
+        Math.abs(pts[i][1] - deduped[deduped.length-1][1]) > 0.5) {
+      deduped.push(pts[i]);
+    }
+  }
+
+  return { pts: deduped, sp, ep };
+}
+
+// Route from (sx,sy) going direction fd to (ex,ey) going direction td
+// Returns array of intermediate waypoints
+function aStarRouteSegment(sx, sy, fd, ex, ey, td, blockers, offsets) {
+  offsets = offsets || {};
+
+  // If user nudged a segment, apply that offset first
+  // Then run A* from the nudged points
+  let startX = sx, startY = sy, endX = ex, endY = ey;
+  if (offsets.mid_x !== undefined) {
+    // User set a vertical middle segment's X
+    // Build an L-shape honouring that X
+    return buildMidX(sx, sy, fd, ex, ey, td, offsets.mid_x);
+  }
+  if (offsets.mid_y !== undefined) {
+    // User set a horizontal middle segment's Y
+    return buildMidY(sx, sy, fd, ex, ey, td, offsets.mid_y);
+  }
+
+  // Direct A* on sparse grid
+  const result = aStarSparse(sx, sy, ex, ey, fd, td, blockers);
+  if (result && result.length >= 2) {
+    // strip first and last (those are the stub endpoints themselves)
+    return result.slice(1, -1);
+  }
+
+  // Fallback: simple L or Z shape
+  return fallbackRoute(sx, sy, fd, ex, ey, td);
+}
+
+// Sparse A* that enforces first move direction fd and last move direction td
+function aStarSparse(sx, sy, ex, ey, fd, td, blockers) {
+  // Candidate coordinates
+  const xSet = new Set([sx, ex]);
+  const ySet = new Set([sy, ey]);
+  blockers.forEach(r => {
+    const M = 20;
+    [r.x - M, r.x, r.x + r.w / 2, r.x + r.w, r.x + r.w + M].forEach(v => xSet.add(Math.round(v)));
+    [r.y - M, r.y, r.y + r.h / 2, r.y + r.h, r.y + r.h + M].forEach(v => ySet.add(Math.round(v)));
+  });
+
+  const xs = [...xSet].sort((a, b) => a - b);
+  const ys = [...ySet].sort((a, b) => a - b);
+  const xi = new Map(xs.map((v, i) => [v, i]));
+  const yi = new Map(ys.map((v, i) => [v, i]));
+
+  const si = xi.get(sx), sj = yi.get(sy);
+  const ei = xi.get(ex), ej = yi.get(ey);
+  if (si === undefined || sj === undefined || ei === undefined || ej === undefined) return null;
+
+  // Direction encoding: 0=H, 1=V
+  const startDir = (fd[0] !== 0) ? 0 : 1;
+  const endDir   = (td[0] !== 0) ? 0 : 1;
+
+  const key = (i, j, d) => (i * 1000 + j) * 2 + d;
+  const heur = (i, j) => Math.abs(xs[i] - ex) + Math.abs(ys[j] - ey);
+
+  const TURN = 8;
+  const open = [];
+  const gMap = new Map();
+  const par  = new Map();
+
+  const sk = key(si, sj, startDir);
+  gMap.set(sk, 0);
+  par.set(sk, -1);
+  open.push({ i: si, j: sj, d: startDir, g: 0, f: heur(si, sj) });
+
+  let found = null;
+  let iters = 0;
+
+  while (open.length > 0 && iters++ < 4000) {
+    // Find min-f (simple linear scan — fast enough for small grids)
+    let minIdx = 0;
+    for (let k = 1; k < open.length; k++) {
+      if (open[k].f < open[minIdx].f) minIdx = k;
+    }
+    const cur = open[minIdx];
+    open.splice(minIdx, 1);
+
+    const { i, j, d } = cur;
+
+    if (i === ei && j === ej) { found = cur; break; }
+
+    const moves = [];
+    if (d === 0) {
+      // Was moving horizontally → can continue H or turn V
+      for (let ni = 0; ni < xs.length; ni++) {
+        if (ni === i) continue;
+        if (!segmentClear(Math.min(xs[i], xs[ni]), ys[j], Math.max(xs[i], xs[ni]), ys[j], blockers)) continue;
+        moves.push({ ni, nj: j, nd: 0, cost: Math.abs(xs[ni] - xs[i]) });
+      }
+      for (let nj = 0; nj < ys.length; nj++) {
+        if (nj === j) continue;
+        if (!segmentClear(xs[i], Math.min(ys[j], ys[nj]), xs[i], Math.max(ys[j], ys[nj]), blockers)) continue;
+        moves.push({ ni: i, nj, nd: 1, cost: Math.abs(ys[nj] - ys[j]) + TURN });
+      }
+    } else {
+      // Was moving vertically → can continue V or turn H
+      for (let nj = 0; nj < ys.length; nj++) {
+        if (nj === j) continue;
+        if (!segmentClear(xs[i], Math.min(ys[j], ys[nj]), xs[i], Math.max(ys[j], ys[nj]), blockers)) continue;
+        moves.push({ ni: i, nj, nd: 1, cost: Math.abs(ys[nj] - ys[j]) });
+      }
+      for (let ni = 0; ni < xs.length; ni++) {
+        if (ni === i) continue;
+        if (!segmentClear(Math.min(xs[i], xs[ni]), ys[j], Math.max(xs[i], xs[ni]), ys[j], blockers)) continue;
+        moves.push({ ni, nj: j, nd: 0, cost: Math.abs(xs[ni] - xs[i]) + TURN });
+      }
+    }
+
+    for (const mv of moves) {
+      const nk = key(mv.ni, mv.nj, mv.nd);
+      const ng = cur.g + mv.cost;
+      if (!gMap.has(nk) || ng < gMap.get(nk)) {
+        gMap.set(nk, ng);
+        par.set(nk, key(i, j, d));
+        open.push({ i: mv.ni, j: mv.nj, d: mv.nd, g: ng, f: ng + heur(mv.ni, mv.nj) });
+      }
+    }
+  }
+
+  if (!found) return null;
+
+  // Reconstruct
+  const pts = [];
+  let ck = key(found.i, found.j, found.d);
+  const visited = new Set();
+  while (ck !== -1 && !visited.has(ck)) {
+    visited.add(ck);
+    const d2 = ck % 2;
+    const rest = Math.floor(ck / 2);
+    const ji = rest % 1000;
+    const ii = Math.floor(rest / 1000);
+    pts.unshift([xs[ii], ys[ji]]);
+    ck = par.get(ck);
+  }
+
+  // Simplify: remove collinear middle points
+  return simplifyOrthogonal(pts);
+}
+
+// Remove unnecessary collinear waypoints
+function simplifyOrthogonal(pts) {
+  if (pts.length <= 2) return pts;
+  const result = [pts[0]];
+  for (let i = 1; i < pts.length - 1; i++) {
+    const prev = result[result.length - 1];
+    const cur  = pts[i];
+    const next = pts[i + 1];
+    const collinearH = Math.abs(prev[1] - cur[1]) < 0.5 && Math.abs(cur[1] - next[1]) < 0.5;
+    const collinearV = Math.abs(prev[0] - cur[0]) < 0.5 && Math.abs(cur[0] - next[0]) < 0.5;
+    if (!collinearH && !collinearV) result.push(cur);
+  }
+  result.push(pts[pts.length - 1]);
+  return result;
+}
+
+// Build route with a fixed vertical mid-segment at given X
+function buildMidX(sx, sy, fd, ex, ey, td, mx) {
+  return [[mx, sy], [mx, ey]];
+}
+
+// Build route with a fixed horizontal mid-segment at given Y
+function buildMidY(sx, sy, fd, ex, ey, td, my) {
+  return [[sx, my], [ex, my]];
+}
+
+// Simple L/Z fallback when A* fails
+function fallbackRoute(sx, sy, fd, ex, ey, td) {
+  const fdH = fd[0] !== 0;
+  const tdH = td[0] !== 0;
+  if (fdH && tdH) {
+    const mx = (sx + ex) / 2;
+    return [[mx, sy], [mx, ey]];
+  } else if (!fdH && !tdH) {
+    const my = (sy + ey) / 2;
+    return [[sx, my], [ex, my]];
+  } else if (!fdH && tdH) {
+    return [[sx, ey]];
+  } else {
+    return [[ex, sy]];
+  }
 }
 
 function getEdgePath(edge) {
@@ -1282,13 +1425,13 @@ function getEdgePath(edge) {
     return `M${sp.px},${sp.py} C${cx1},${cy1} ${cx2},${cy2} ${ep.px},${ep.py}`;
   }
 
-  // Orthogonal with obstacle avoidance
+  // Orthogonal with A* obstacle avoidance
   const { pts } = buildOrthogonalWaypoints(edge, src, dst);
   return waypointsToPath(pts);
 }
 
 // Get draggable segment handles for an edge (orthogonal mode only)
-// Returns array of { cx, cy, axis, segKey, segIndex } for each draggable middle segment
+// Includes first stub (index 0→1) and last stub (index n-2→n-1) with special kind='stub'
 function getEdgeSegmentHandles(edge) {
   if (edgeStyle !== 'orthogonal') return [];
   const src = nodes.find(n => n.id === edge.from);
@@ -1299,18 +1442,42 @@ function getEdgeSegmentHandles(edge) {
   if (pts.length < 2) return [];
 
   const handles = [];
-  // Skip first segment (stub out) and last segment (stub in) — indices 0-1 and (n-2)-(n-1)
-  // Draggable segments are from index 1 to index pts.length-3 (between stubs)
+
+  // First stub: segment pts[0]→pts[1]
+  if (pts.length >= 2) {
+    const ax = pts[0][0], ay = pts[0][1];
+    const bx = pts[1][0], by = pts[1][1];
+    const isHoriz = Math.abs(ay - by) < 1;
+    const isVert  = Math.abs(ax - bx) < 1;
+    if (isHoriz || isVert) {
+      handles.push({ cx: (ax+bx)/2, cy: (ay+by)/2, axis: isHoriz ? 'y' : 'x', segIndex: 0, pts, kind: 'stub_src' });
+    }
+  }
+
+  // Middle segments (skip first stub and last stub)
   for (let i = 1; i < pts.length - 2; i++) {
     const ax = pts[i][0], ay = pts[i][1];
     const bx = pts[i+1][0], by = pts[i+1][1];
     const isHoriz = Math.abs(ay - by) < 1;
     const isVert  = Math.abs(ax - bx) < 1;
-    if (!isHoriz && !isVert) continue; // skip diagonal (shouldn't happen)
+    if (!isHoriz && !isVert) continue;
     const cx = (ax + bx) / 2;
     const cy = (ay + by) / 2;
-    handles.push({ cx, cy, axis: isHoriz ? 'y' : 'x', segIndex: i, pts });
+    handles.push({ cx, cy, axis: isHoriz ? 'y' : 'x', segIndex: i, pts, kind: 'mid' });
   }
+
+  // Last stub: segment pts[n-2]→pts[n-1]
+  if (pts.length >= 2) {
+    const n = pts.length;
+    const ax = pts[n-2][0], ay = pts[n-2][1];
+    const bx = pts[n-1][0], by = pts[n-1][1];
+    const isHoriz = Math.abs(ay - by) < 1;
+    const isVert  = Math.abs(ax - bx) < 1;
+    if (isHoriz || isVert) {
+      handles.push({ cx: (ax+bx)/2, cy: (ay+by)/2, axis: isHoriz ? 'y' : 'x', segIndex: n-2, pts, kind: 'stub_dst' });
+    }
+  }
+
   return handles;
 }
 
@@ -1403,13 +1570,15 @@ function render() {
           hg.dataset.edgeId = edge.id;
           hg.dataset.segIndex = h.segIndex;
           hg.dataset.axis = h.axis;
+          hg.dataset.segKind = h.kind || 'mid';
           hg.dataset.pts = JSON.stringify(h.pts);
           hg.style.cursor = h.axis === 'y' ? 'ns-resize' : 'ew-resize';
 
           // Draw a wider invisible hit area
           const hitLine = document.createElementNS('http://www.w3.org/2000/svg','line');
           const ax = h.pts[h.segIndex][0], ay = h.pts[h.segIndex][1];
-          const bx = h.pts[h.segIndex+1][0], by = h.pts[h.segIndex+1][1];
+          const bx = h.pts[h.segIndex+1] ? h.pts[h.segIndex+1][0] : ax;
+          const by = h.pts[h.segIndex+1] ? h.pts[h.segIndex+1][1] : ay;
           hitLine.setAttribute('x1', ax); hitLine.setAttribute('y1', ay);
           hitLine.setAttribute('x2', bx); hitLine.setAttribute('y2', by);
           hitLine.setAttribute('stroke', 'transparent');
@@ -1418,13 +1587,15 @@ function render() {
 
           // Visual handle dot — only shown when edge is selected
           if (isSelected) {
+            const isStub = h.kind === 'stub_src' || h.kind === 'stub_dst';
             const circ = document.createElementNS('http://www.w3.org/2000/svg','circle');
             circ.setAttribute('cx', h.cx); circ.setAttribute('cy', h.cy);
-            circ.setAttribute('r', '5');
-            circ.setAttribute('fill', '#4fffb0');
+            circ.setAttribute('r', isStub ? '4' : '5');
+            // Stub handles: orange-ish color to distinguish from mid handles
+            circ.setAttribute('fill', isStub ? '#fbbf24' : '#4fffb0');
             circ.setAttribute('stroke', isDark() ? '#0d0f14' : '#fff');
             circ.setAttribute('stroke-width', '1.5');
-            circ.setAttribute('opacity', '0.85');
+            circ.setAttribute('opacity', '0.9');
             hg.appendChild(circ);
           }
           g.appendChild(hg);
@@ -2582,9 +2753,13 @@ svg.addEventListener('mousemove', e => {
         node.x = draggingParallelResize.startNodeX + (draggingParallelResize.startNodeW - newW);
         node.w = newW;
       }
-      // Recompute connected edges routing
+      // Reset only stub offsets for connected edges — preserve manual mid-segment positions
       edges.forEach(ed => {
-        if (ed.from === node.id || ed.to === node.id) ed.segOffsets = {};
+        if (ed.from === node.id || ed.to === node.id) {
+          if (!ed.segOffsets) ed.segOffsets = {};
+          if (ed.from === node.id) delete ed.segOffsets.stub_src_offset;
+          if (ed.to === node.id) delete ed.segOffsets.stub_dst_offset;
+        }
       });
       render();
     }
@@ -2612,20 +2787,52 @@ svg.addEventListener('mousemove', e => {
       const src = nodes.find(n => n.id === edge.from);
       const dst = nodes.find(n => n.id === edge.to);
       if (src && dst) {
-        const { pts } = buildOrthogonalWaypoints(edge, src, dst);
-        const si = draggingSegment.segIndex;
-        // Determine which segment we're dragging: find the actual segment coords
-        if (si < pts.length - 1) {
-          const ax = pts[si][0], ay = pts[si][1];
-          const bx = pts[si+1][0], by = pts[si+1][1];
+        const kind = draggingSegment.kind || 'mid';
+
+        if (kind === 'stub_src') {
+          // Dragging the first stub: constrain to perpendicular axis
+          const { pts } = buildOrthogonalWaypoints(edge, src, dst);
+          const ax = pts[0][0], ay = pts[0][1];
+          const bx = pts[1][0], by = pts[1][1];
           const isHoriz = Math.abs(ay - by) < 1;
           if (isHoriz) {
-            // Horizontal segment: drag vertically — store as mid_y or seg0
-            edge.segOffsets.mid_y = pt.y;
-            edge.segOffsets.seg0 = pt.y;
+            // Stub is horizontal → drag up/down → store new Y
+            edge.segOffsets.stub_src_offset = pt.y;
           } else {
-            // Vertical segment: drag horizontally
-            edge.segOffsets.mid_x = pt.x;
+            // Stub is vertical → drag left/right → store new X
+            edge.segOffsets.stub_src_offset = pt.x;
+          }
+          // Clear mid offsets so A* reruns from new stub position
+          delete edge.segOffsets.mid_x;
+          delete edge.segOffsets.mid_y;
+        } else if (kind === 'stub_dst') {
+          // Dragging the last stub
+          const { pts } = buildOrthogonalWaypoints(edge, src, dst);
+          const n = pts.length;
+          const ax = pts[n-2][0], ay = pts[n-2][1];
+          const bx = pts[n-1][0], by = pts[n-1][1];
+          const isHoriz = Math.abs(ay - by) < 1;
+          if (isHoriz) {
+            edge.segOffsets.stub_dst_offset = pt.y;
+          } else {
+            edge.segOffsets.stub_dst_offset = pt.x;
+          }
+          delete edge.segOffsets.mid_x;
+          delete edge.segOffsets.mid_y;
+        } else {
+          // Middle segment drag (existing logic)
+          const { pts } = buildOrthogonalWaypoints(edge, src, dst);
+          const si = draggingSegment.segIndex;
+          if (si < pts.length - 1) {
+            const ax = pts[si][0], ay = pts[si][1];
+            const bx = pts[si+1][0], by = pts[si+1][1];
+            const isHoriz = Math.abs(ay - by) < 1;
+            if (isHoriz) {
+              edge.segOffsets.mid_y = pt.y;
+              edge.segOffsets.seg0 = pt.y;
+            } else {
+              edge.segOffsets.mid_x = pt.x;
+            }
           }
         }
         render();
@@ -2646,9 +2853,16 @@ svg.addEventListener('mousemove', e => {
     const { dx, dy, guides } = computeAlignSnap(draggedNodes, draggedIds);
     draggedNodes.forEach(n => { n.x += dx; n.y += dy; });
     alignSnapGuides = guides;
-    // Clear segOffsets for edges connected to any dragged node
+    // Reset only stub offsets for edges connected to dragged nodes — preserve mid-segment positions
     edges.forEach(ed => {
-      if (draggedIds.has(ed.from) || draggedIds.has(ed.to)) ed.segOffsets = {};
+      const fromDragged = draggedIds.has(ed.from);
+      const toDragged   = draggedIds.has(ed.to);
+      if (fromDragged || toDragged) {
+        if (!ed.segOffsets) ed.segOffsets = {};
+        // Only reset the stub of the side that moved
+        if (fromDragged) delete ed.segOffsets.stub_src_offset;
+        if (toDragged)   delete ed.segOffsets.stub_dst_offset;
+      }
     });
     if (isOverDeleteZone(e.clientX, e.clientY)) {
       deleteZone.style.background = 'rgba(255,107,107,0.28)';
@@ -2669,10 +2883,12 @@ svg.addEventListener('mousemove', e => {
     draggingNode.x += dx;
     draggingNode.y += dy;
     alignSnapGuides = guides;
-    // Clear segOffsets for connected edges so routing recalculates
+    // Reset only stub offsets for connected edges — preserve manual mid-segment positions
     edges.forEach(ed => {
       if (ed.from === draggingNode.id || ed.to === draggingNode.id) {
-        ed.segOffsets = {};
+        if (!ed.segOffsets) ed.segOffsets = {};
+        if (ed.from === draggingNode.id) delete ed.segOffsets.stub_src_offset;
+        if (ed.to === draggingNode.id)   delete ed.segOffsets.stub_dst_offset;
       }
     });
     if (isOverDeleteZone(e.clientX, e.clientY)) {
@@ -2830,8 +3046,9 @@ svg.addEventListener('mousedown', e => {
     const edgeId = segHandleEl.dataset.edgeId;
     const segIndex = parseInt(segHandleEl.dataset.segIndex);
     const axis = segHandleEl.dataset.axis;
+    const kind = segHandleEl.dataset.segKind || 'mid';
     saveHistory();
-    draggingSegment = { edgeId, segIndex, axis };
+    draggingSegment = { edgeId, segIndex, axis, kind };
     selectedIds.clear();
     selectedId = edgeId;
     render(); updateProps();
