@@ -606,6 +606,7 @@ let historyIndex = -1;
 let nodeIdCounter = 1;
 let edgeIdCounter = 1;
 let hoveredPort = null;
+let hoveredCustomPtIdx = -1; // index of the custom point hovered in the sidebar panel
 let connectingTemp = null;
 let connectingFromPort = null; // port id where drag started
 let edgeStyle = "orthogonal"; // orthogonal | curved
@@ -1460,7 +1461,88 @@ function render() {
     g.appendChild(grp);
   });
 
-  // Second pass: draw segment handles on top of nodes so they remain interactive
+  // Second pass (custom shape): draw draggable point handles with numbers when a custom node is selected
+  {
+    const selNode = nodes.find(n => n.id === selectedId && n.type === 'custom');
+    if (selNode && selNode.customPoints && selNode.customPoints.length >= 3) {
+      const { x, y, w, h } = selNode;
+      selNode.customPoints.forEach(([rx, ry], i) => {
+        const px = x + rx * w;
+        const py = y + ry * h;
+        const isFirst = i === 0;
+        const isHovered = hoveredCustomPtIdx === i;
+        const R = (isHovered ? 9 : 7) / zoom; // scale handle with zoom so it stays readable
+
+        // Outer ring (highlight)
+        const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        ring.setAttribute('cx', px); ring.setAttribute('cy', py);
+        ring.setAttribute('r', (R + 3));
+        ring.setAttribute('fill', 'none');
+        ring.setAttribute('stroke', isFirst ? '#4fffb0' : (isHovered ? '#fbbf24' : '#a78bfa'));
+        ring.setAttribute('stroke-width', 1.5 / zoom);
+        ring.setAttribute('opacity', isHovered ? '0.7' : '0.4');
+        ring.setAttribute('pointer-events', 'none');
+        g.appendChild(ring);
+
+        // Filled circle
+        const circ = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circ.setAttribute('cx', px); circ.setAttribute('cy', py);
+        circ.setAttribute('r', R);
+        circ.setAttribute('fill', isFirst ? '#4fffb0' : (isHovered ? '#fbbf24' : '#a78bfa'));
+        circ.setAttribute('stroke', isDark() ? '#0d0f14' : '#ffffff');
+        circ.setAttribute('stroke-width', 1.5 / zoom);
+        circ.setAttribute('pointer-events', 'none');
+        g.appendChild(circ);
+
+        // Number label
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('x', px);
+        label.setAttribute('y', py);
+        label.setAttribute('text-anchor', 'middle');
+        label.setAttribute('dominant-baseline', 'central');
+        label.setAttribute('font-size', Math.max(6, 8 / zoom));
+        label.setAttribute('font-family', 'JetBrains Mono, monospace');
+        label.setAttribute('font-weight', '700');
+        label.setAttribute('fill', isDark() ? '#0d0f14' : '#ffffff');
+        label.setAttribute('pointer-events', 'none');
+        label.textContent = i + 1;
+        g.appendChild(label);
+
+        // Tooltip-style tag showing point index, offset a bit above the point
+        const tagPad = 3 / zoom;
+        const tagW = 22 / zoom;
+        const tagH = 13 / zoom;
+        const tagX = px + (R + 4);
+        const tagY = py - (R + 4) - tagH;
+        const tagBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        tagBg.setAttribute('x', tagX);
+        tagBg.setAttribute('y', tagY);
+        tagBg.setAttribute('width', tagW);
+        tagBg.setAttribute('height', tagH);
+        tagBg.setAttribute('rx', 3 / zoom);
+        tagBg.setAttribute('fill', isFirst ? 'rgba(79,255,176,0.18)' : (isHovered ? 'rgba(251,191,36,0.18)' : 'rgba(167,139,250,0.18)'));
+        tagBg.setAttribute('stroke', isFirst ? '#4fffb0' : (isHovered ? '#fbbf24' : '#a78bfa'));
+        tagBg.setAttribute('stroke-width', 0.8 / zoom);
+        tagBg.setAttribute('pointer-events', 'none');
+        g.appendChild(tagBg);
+
+        const tagText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        tagText.setAttribute('x', tagX + tagW / 2);
+        tagText.setAttribute('y', tagY + tagH / 2);
+        tagText.setAttribute('text-anchor', 'middle');
+        tagText.setAttribute('dominant-baseline', 'central');
+        tagText.setAttribute('font-size', Math.max(5, 7 / zoom));
+        tagText.setAttribute('font-family', 'JetBrains Mono, monospace');
+        tagText.setAttribute('font-weight', '600');
+        tagText.setAttribute('fill', isFirst ? '#4fffb0' : (isHovered ? '#fbbf24' : '#a78bfa'));
+        tagText.setAttribute('pointer-events', 'none');
+        tagText.textContent = `P${i + 1}`;
+        g.appendChild(tagText);
+      });
+    }
+  }
+
+  // Third pass: draw segment handles on top of nodes so they remain interactive
   if (edgeStyle === 'orthogonal') {
     edges.forEach(edge => {
       const isSelected = selectedId === edge.id;
@@ -3402,6 +3484,16 @@ function renderCustomPointsList(node) {
     `;
     row.draggable = true;
 
+    // Hover: highlight point on canvas
+    row.addEventListener('mouseenter', () => {
+      hoveredCustomPtIdx = i;
+      render();
+    });
+    row.addEventListener('mouseleave', () => {
+      hoveredCustomPtIdx = -1;
+      render();
+    });
+
     // Drag handle
     const handle = document.createElement('span');
     handle.textContent = '⠿';
@@ -3410,8 +3502,16 @@ function renderCustomPointsList(node) {
 
     // Index badge
     const badge = document.createElement('span');
-    badge.textContent = (i + 1);
-    badge.style.cssText = `font-family:monospace;font-size:9px;color:#a78bfa;flex-shrink:0;width:14px;text-align:center;`;
+    const isFirstBadge = i === 0;
+    badge.textContent = `P${i + 1}`;
+    badge.style.cssText = `
+      font-family:monospace;font-size:9px;font-weight:700;
+      color:${isFirstBadge ? '#4fffb0' : '#a78bfa'};
+      flex-shrink:0;min-width:20px;text-align:center;
+      background:${isFirstBadge ? 'rgba(79,255,176,0.12)' : 'rgba(167,139,250,0.12)'};
+      border:1px solid ${isFirstBadge ? 'rgba(79,255,176,0.4)' : 'rgba(167,139,250,0.4)'};
+      border-radius:3px;padding:0 2px;line-height:14px;
+    `;
     row.appendChild(badge);
 
     // X input
