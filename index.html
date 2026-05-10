@@ -100,6 +100,167 @@
     user-select: none;
     -webkit-user-select: none;
   }
+
+/* ===== MOBILE ADAPTATIONS ===== */
+  @media (max-width: 768px) {
+    /* Header: hide desktop buttons, show compact icon toolbar */
+    #headerButtons { display: none; }
+    #mobileMenuBtn { display: none !important; }
+
+    /* Compact mobile toolbar strip — below header */
+    #mobileToolbar {
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 6px 8px;
+    }
+    .mtb-btn {
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      border: 1px solid;
+      font-size: 15px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s;
+      flex-shrink: 0;
+      background: transparent;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .mtb-btn.danger {
+      font-size: 11px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      color: #ff6b6b;
+      border-color: rgba(255,107,107,0.4);
+    }
+    .mtb-btn.danger:active { background: rgba(255,107,107,0.15); }
+    /* Separator line */
+    .mtb-sep {
+      width: 1px; height: 20px; flex-shrink: 0;
+      background: currentColor; opacity: 0.15;
+    }
+    /* Theme pill in toolbar */
+    #mobileThemePill {
+      display: flex; align-items: center; gap: 2px;
+    }
+
+    /* Dropdown for export/import — slides down */
+    #mobileMoreMenu {
+      position: fixed; top: 96px; right: 8px; z-index: 300;
+      display: none; flex-direction: column; gap: 4px;
+      padding: 8px;
+      border-radius: 10px;
+      border: 1px solid;
+      min-width: 160px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    #mobileMoreMenu.open { display: flex; }
+    .mmm-btn {
+      width: 100%; text-align: left;
+      padding: 9px 12px; border-radius: 7px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px; font-weight: 500;
+      border: 1px solid transparent;
+      cursor: pointer;
+      background: transparent;
+      transition: all 0.12s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Mobile FAB toolbar — now only shapes+props, no menu fab */
+
+    /* Left sidebar: hidden by default, slides up from bottom */
+    #leftSidebar {
+      position: fixed !important;
+      bottom: 26px; left: 0; right: 0;
+      width: 100% !important;
+      max-height: 50vh;
+      overflow-y: auto;
+      z-index: 150;
+      transform: translateY(100%);
+      transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+      border-top: 1px solid;
+      border-right: none !important;
+    }
+    #leftSidebar.mobile-open { transform: translateY(0); }
+
+    /* Right sidebar: hidden by default, slides up from bottom */
+    #rightSidebar {
+      position: fixed !important;
+      bottom: 26px; left: 0; right: 0;
+      width: 100% !important;
+      max-height: 55vh;
+      overflow-y: auto;
+      z-index: 150;
+      transform: translateY(100%);
+      transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+      border-top: 1px solid;
+      border-left: none !important;
+    }
+    #rightSidebar.mobile-open { transform: translateY(0); }
+
+    /* Mobile FAB toolbar — sits above status bar, right side */
+    #mobileFabs {
+      display: flex !important;
+      position: fixed;
+      bottom: 34px;
+      right: 12px;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 120;
+    }
+    .mobile-fab {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      border: 1px solid;
+      font-size: 18px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    .mobile-fab.active {
+      border-color: #4fffb0 !important;
+      color: #4fffb0 !important;
+    }
+
+    /* Status bar: more compact */
+    #statusBar { font-size: 9px; height: 26px; }
+
+    /* Sheet tabs strip: full width */
+    #sheetsStrip { left: 0 !important; right: 0 !important; }
+
+    /* Canvas takes full space */
+    #canvasWrap { width: 100% !important; }
+
+    /* Minimap smaller on mobile */
+    #minimap { width: 90px !important; height: 58px !important; bottom: 32px !important; right: 60px !important; }
+
+    /* Header smaller */
+    header { padding: 6px 10px; }
+    header .text-lg { font-size: 16px; }
+
+    /* Palette items: larger touch targets */
+    #leftSidebar .palette-item { padding: 10px 12px; font-size: 13px; }
+
+    /* Overlay backdrop for sidebars */
+    #mobileBackdrop {
+      display: none;
+      position: fixed; inset: 0; z-index: 140;
+      background: rgba(0,0,0,0.5);
+    }
+    #mobileBackdrop.active { display: block; }
+  }
+
+  @media (min-width: 769px) {
+    #mobileMenuBtn { display: none !important; }
+    #mobileFabs { display: none !important; }
+    #mobileMenu { display: none !important; }
+    #mobileMoreMenu { display: none !important; }
+    #mobileToolbar { display: none !important; }
+    #mobileBackdrop { display: none !important; }
+  }
 </style>
 </head>
 <body class="dark:bg-dark-bg bg-light-bg dark:text-gray-100 text-gray-800 h-screen overflow-hidden flex flex-col">
@@ -109,7 +270,10 @@
   <div class="text-lg font-black tracking-tight text-accent font-syne">
     ГОСТ<span class="dark:text-gray-500 text-gray-400">Флоу</span>
   </div>
-  <div class="flex items-center gap-2 flex-wrap">
+  <!-- Hidden hamburger (kept for JS compat) -->
+  <button id="mobileMenuBtn" style="display:none"></button>
+
+  <div id="headerButtons" class="flex items-center gap-2 flex-wrap">
     <button class="btn font-mono text-xs px-3.5 py-1.5 rounded-md dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-700 cursor-pointer transition-all hover:border-accent hover:text-accent" id="btnUndo" title="Ctrl+Z">↩ Отмена</button>
     <button class="btn font-mono text-xs px-3.5 py-1.5 rounded-md dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-700 cursor-pointer transition-all hover:border-accent hover:text-accent" id="btnRedo" title="Ctrl+Y">↪ Повтор</button>
     <button class="btn font-mono text-xs px-3.5 py-1.5 rounded-md dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-700 cursor-pointer transition-all hover:border-accent hover:text-accent" id="btnZoomIn">＋</button>
@@ -133,9 +297,38 @@
   </div>
 </header>
 
+<!-- MOBILE TOOLBAR STRIP (below header, mobile only) -->
+<div id="mobileToolbar" style="display:none" class="dark:bg-dark-surface bg-light-surface dark:border-dark-border border-light-border border-b z-40 flex-shrink-0 px-2 py-1.5 justify-center gap-2">
+  <!-- Undo / Redo -->
+  <button class="mtb-btn dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border dark:text-gray-200 text-gray-700"
+    title="Отмена" onclick="document.getElementById('btnUndo').click()">↩</button>
+  <button class="mtb-btn dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border dark:text-gray-200 text-gray-700"
+    title="Повтор" onclick="document.getElementById('btnRedo').click()">↪</button>
+
+  <div class="mtb-sep dark:text-gray-500 text-gray-300"></div>
+
+  <!-- Zoom -->
+  <button class="mtb-btn dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border dark:text-gray-200 text-gray-700"
+    title="Приблизить" onclick="document.getElementById('btnZoomIn').click()">＋</button>
+  <button class="mtb-btn dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border dark:text-gray-200 text-gray-700"
+    title="Вписать" onclick="document.getElementById('btnFit').click()">⊡</button>
+  <button class="mtb-btn dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border dark:text-gray-200 text-gray-700"
+    title="Отдалить" onclick="document.getElementById('btnZoomOut').click()">－</button>
+
+  <div class="mtb-sep dark:text-gray-500 text-gray-300"></div>
+
+  <!-- Clear -->
+  <button class="mtb-btn danger dark:bg-dark-panel bg-light-panel"
+    title="Очистить" onclick="document.getElementById('btnClear').click()">CLR</button>
+
+  <!-- More -->
+  <button class="mtb-btn dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border dark:text-gray-200 text-gray-700"
+    title="Ещё" id="mobileMoreBtn" onclick="toggleMoreMenu()">⋯</button>
+</div>
+
 <div class="flex flex-1 overflow-hidden">
   <!-- LEFT SIDEBAR -->
-  <div class="w-48 flex-shrink-0 dark:bg-dark-surface bg-light-surface dark:border-dark-border border-light-border border-r flex flex-col overflow-y-auto">
+  <div id="leftSidebar" class="w-48 flex-shrink-0 dark:bg-dark-surface bg-light-surface dark:border-dark-border border-light-border border-r flex flex-col overflow-y-auto">
 
     <!-- Shapes -->
     <div class="px-3 pt-3.5 pb-2 dark:border-dark-border border-light-border border-b">
@@ -310,7 +503,7 @@
   </div>
 
   <!-- PROPS PANEL -->
-  <div class="w-56 flex-shrink-0 dark:bg-dark-surface bg-light-surface dark:border-dark-border border-light-border border-l flex flex-col overflow-y-auto">
+  <div id="rightSidebar" class="w-56 flex-shrink-0 dark:bg-dark-surface bg-light-surface dark:border-dark-border border-light-border border-l flex flex-col overflow-y-auto">
 
     <!-- Tab bar -->
     <div class="flex border-b dark:border-dark-border border-light-border flex-shrink-0">
@@ -503,7 +696,7 @@
 </div>
 
 <!-- STATUS BAR (contains floating sheet tabs above) -->
-<div class="dark:bg-dark-surface bg-light-surface dark:border-dark-border border-light-border border-t flex items-center flex-shrink-0" style="height:26px;position:relative;overflow:visible;">
+<div id="statusBar" class="dark:bg-dark-surface bg-light-surface dark:border-dark-border border-light-border border-t flex items-center flex-shrink-0" style="height:26px;position:relative;overflow:visible;">
 
   <!-- Sheet tabs – float above the status bar, anchored to its top edge -->
   <div id="sheetsStrip" style="
@@ -555,9 +748,252 @@
   </div>
 </div>
 
+<!-- Mobile backdrop -->
+<div id="mobileBackdrop" onclick="closeMobilePanels()"></div>
+
+<!-- Mobile dropdown menu (hamburger) -->
+<div id="mobileMoreMenu" class="dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border dark:text-gray-200 text-gray-700">
+  <button class="mmm-btn dark:hover:bg-dark-surface hover:bg-light-bg dark:text-gray-200 text-gray-700"
+    onclick="document.getElementById('btnExportSVG').click();closeMoreMenu()">↓ Экспорт SVG</button>
+  <button class="mmm-btn dark:hover:bg-dark-surface hover:bg-light-bg dark:text-gray-200 text-gray-700"
+    onclick="document.getElementById('btnExportJSON').click();closeMoreMenu()">↓ Экспорт JSON</button>
+  <button class="mmm-btn dark:hover:bg-dark-surface hover:bg-light-bg dark:text-gray-200 text-gray-700"
+    onclick="document.getElementById('btnImportJSON').click();closeMoreMenu()">↑ Импорт JSON</button>
+  <!-- divider -->
+  <div style="height:1px;margin:4px 0" class="dark:bg-dark-border bg-light-border"></div>
+  <!-- Theme toggle -->
+  <div class="flex items-center gap-3 px-3 py-2">
+    <span class="font-mono text-xs dark:text-gray-400 text-gray-500">Тема</span>
+    <span class="text-xs dark:text-gray-500 text-gray-400 select-none">☀</span>
+    <label class="theme-toggle">
+      <input type="checkbox" id="themeToggleMobile">
+      <div class="theme-toggle-track">
+        <div class="theme-toggle-thumb" id="themeThumbMobile">🌙</div>
+      </div>
+    </label>
+  </div>
+</div>
+
+<!-- Mobile FAB buttons -->
+<div id="mobileFabs" style="display:none">
+  <button class="mobile-fab dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border dark:text-gray-200 text-gray-700" id="fabShapes" onclick="toggleMobileSidebar('left')" title="Фигуры">
+    ⬡
+  </button>
+  <button class="mobile-fab dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border dark:text-gray-200 text-gray-700" id="fabProps" onclick="toggleMobileSidebar('right')" title="Свойства">
+    ⚙
+  </button>
+</div>
+
 <script>
-// ============================================================
-// THEME
+// ===== MOBILE MENU & SIDEBAR LOGIC =====
+const mobileMenu = { classList: { toggle: ()=>{}, remove: ()=>{}, add: ()=>{}, contains: ()=>false } }; // stub for compat
+const mobileMoreMenu = document.getElementById('mobileMoreMenu');
+const mobileBackdrop = document.getElementById('mobileBackdrop');
+const leftSidebar = document.getElementById('leftSidebar');
+const rightSidebar = document.getElementById('rightSidebar');
+const fabShapes = document.getElementById('fabShapes');
+const fabProps = document.getElementById('fabProps');
+const themeToggleMobile = document.getElementById('themeToggleMobile');
+const themeThumbMobile = document.getElementById('themeThumbMobile');
+
+// Sync mobile theme toggle with main
+themeToggleMobile.addEventListener('change', () => {
+  const isDark = themeToggleMobile.checked;
+  document.getElementById('themeToggle').checked = isDark;
+  document.getElementById('themeToggle').dispatchEvent(new Event('change'));
+});
+
+// Keep mobile toggle in sync when desktop toggle changes
+document.getElementById('themeToggle').addEventListener('change', () => {
+  themeToggleMobile.checked = document.getElementById('themeToggle').checked;
+  themeThumbMobile.textContent = document.getElementById('themeThumb').textContent;
+});
+
+function toggleMoreMenu() {
+  const isOpen = mobileMoreMenu.classList.toggle('open');
+  mobileBackdrop.classList.toggle('active', isOpen);
+  if (isOpen) {
+    leftSidebar.classList.remove('mobile-open');
+    rightSidebar.classList.remove('mobile-open');
+    fabShapes.classList.remove('active');
+    fabProps.classList.remove('active');
+  }
+}
+
+function closeMoreMenu() {
+  mobileMoreMenu.classList.remove('open');
+  mobileBackdrop.classList.remove('active');
+}
+
+// Legacy stubs so existing code doesn't break
+function toggleMobileMenu() { toggleMoreMenu(); }
+function closeMobileMenu() { closeMoreMenu(); }
+
+function toggleMobileSidebar(side) {
+  closeMobileMenu();
+  const isLeft = side === 'left';
+  const sidebar = isLeft ? leftSidebar : rightSidebar;
+  const otherSidebar = isLeft ? rightSidebar : leftSidebar;
+  const fab = isLeft ? fabShapes : fabProps;
+  const otherFab = isLeft ? fabProps : fabShapes;
+
+  const wasOpen = sidebar.classList.contains('mobile-open');
+  otherSidebar.classList.remove('mobile-open');
+  otherFab.classList.remove('active');
+
+  if (!wasOpen) {
+    sidebar.classList.add('mobile-open');
+    fab.classList.add('active');
+    mobileBackdrop.classList.add('active');
+  } else {
+    sidebar.classList.remove('mobile-open');
+    fab.classList.remove('active');
+    mobileBackdrop.classList.remove('active');
+  }
+}
+
+function closeMobilePanels() {
+  mobileMoreMenu.classList.remove('open');
+  leftSidebar.classList.remove('mobile-open');
+  rightSidebar.classList.remove('mobile-open');
+  mobileBackdrop.classList.remove('active');
+  fabShapes.classList.remove('active');
+  fabProps.classList.remove('active');
+}
+
+// ===== TAP-TO-SPAWN on palette items (mobile) =====
+// When user taps a palette item, spawn the shape in the visible canvas center
+document.getElementById('nodePalette').addEventListener('click', (e) => {
+  if (window.innerWidth > 768) return; // desktop uses drag
+  const item = e.target.closest('.palette-item[data-type]');
+  if (!item) return;
+  const type = item.dataset.type;
+  if (!type || !window.NODE_DEFAULTS) return;
+  const def = window.NODE_DEFAULTS[type];
+  if (!def) return;
+
+  // Get visible center of canvas in SVG coords
+  const cw = document.getElementById('canvasWrap');
+  const rect = cw.getBoundingClientRect();
+  const cx = (rect.width / 2 - window.pan.x) / window.zoom;
+  const cy = (rect.height / 2 - window.pan.y) / window.zoom;
+
+  // Slight random offset so stacked shapes are visible
+  const jitter = () => (Math.random() - 0.5) * 40;
+
+  window.saveHistory();
+  const node = {
+    id: `n${window.nodeIdCounter++}`,
+    type,
+    x: cx - def.w / 2 + jitter(),
+    y: cy - def.h / 2 + jitter(),
+    w: def.w,
+    h: def.h,
+    label: def.label,
+    color: def.color,
+    ...(def.paramA !== undefined ? { paramA: def.paramA } : {}),
+  };
+  if (node.paramA !== undefined && window.applyParamA) window.applyParamA(node, node.paramA);
+  window.nodes.push(node);
+  window.selectedId = node.id;
+  window.render(); window.updateProps(); window.updateStatus();
+
+  // Close sidebar after spawning
+  closeMobilePanels();
+});
+
+// ===== TOUCH PAN (single finger on empty canvas area) =====
+(function() {
+  const cw = document.getElementById('canvasWrap');
+  let touchPanActive = false;
+  let lastTouchX = 0, lastTouchY = 0;
+  let lastDist = null;
+  let touchStartX = 0, touchStartY = 0;
+  let touchMoved = false;
+
+  cw.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      // Single finger: potential pan OR tap on shape
+      touchPanActive = true;
+      lastTouchX = e.touches[0].clientX;
+      lastTouchY = e.touches[0].clientY;
+      touchStartX = lastTouchX;
+      touchStartY = lastTouchY;
+      touchMoved = false;
+    } else if (e.touches.length === 2) {
+      // Two fingers: pinch zoom
+      touchPanActive = false;
+      lastDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  cw.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2) {
+      // Pinch to zoom
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      if (lastDist !== null) {
+        const delta = dist - lastDist;
+        // Only fire zoom every 8px change to avoid rapid firing
+        if (Math.abs(delta) > 8) {
+          if (delta > 0) document.getElementById('btnZoomIn').click();
+          else document.getElementById('btnZoomOut').click();
+          lastDist = dist;
+        }
+      }
+      e.preventDefault();
+      return;
+    }
+
+    if (e.touches.length === 1 && touchPanActive) {
+      const dx = e.touches[0].clientX - lastTouchX;
+      const dy = e.touches[0].clientY - lastTouchY;
+      const totalDx = e.touches[0].clientX - touchStartX;
+      const totalDy = e.touches[0].clientY - touchStartY;
+
+      // Only start panning if moved more than 6px (distinguish from tap)
+      if (!touchMoved && Math.hypot(totalDx, totalDy) > 6) {
+        touchMoved = true;
+      }
+
+      if (touchMoved) {
+        // Check if touch started on a node — if so, don't pan (let SVG handle drag)
+        // We pan only when touching empty canvas
+        if (window.pan) {
+          window.pan.x += dx;
+          window.pan.y += dy;
+          if (window.applyTransform) window.applyTransform();
+          if (window.updateMinimap) window.updateMinimap();
+        }
+        e.preventDefault();
+      }
+
+      lastTouchX = e.touches[0].clientX;
+      lastTouchY = e.touches[0].clientY;
+    }
+  }, { passive: false });
+
+  cw.addEventListener('touchend', (e) => {
+    touchPanActive = false;
+    lastDist = null;
+
+    // If it was a quick tap (not a pan), close open panels
+    if (!touchMoved && window.innerWidth <= 768) {
+      if (leftSidebar.classList.contains('mobile-open') || rightSidebar.classList.contains('mobile-open') || mobileMoreMenu.classList.contains('open')) {
+        closeMobilePanels();
+      }
+    }
+  });
+})();
+</script>
+
+<script>
 // ============================================================
 const themeToggle = document.getElementById('themeToggle');
 const themeThumb = document.getElementById('themeThumb');
@@ -4402,6 +4838,23 @@ origBtnClear.addEventListener('click', () => {
     if (sh) { sh.nodes = []; sh.edges = []; }
   }, 100);
 }, true);
+
+// Expose internals for mobile script
+window.NODE_DEFAULTS = NODE_DEFAULTS;
+window.nodes = nodes;
+window.pan = pan;
+window.zoom = 0; // placeholder – updated via getter below
+Object.defineProperty(window, 'zoom', { get: () => zoom, set: v => { zoom = v; } });
+Object.defineProperty(window, 'nodes', { get: () => nodes, set: v => { nodes = v; } });
+Object.defineProperty(window, 'selectedId', { get: () => selectedId, set: v => { selectedId = v; } });
+Object.defineProperty(window, 'nodeIdCounter', { get: () => nodeIdCounter, set: v => { nodeIdCounter = v; } });
+window.saveHistory = saveHistory;
+window.applyParamA = applyParamA;
+window.applyTransform = applyTransform;
+window.updateMinimap = updateMinimap;
+window.render = render;
+window.updateProps = updateProps;
+window.updateStatus = updateStatus;
 </script>
 </body>
 </html>
