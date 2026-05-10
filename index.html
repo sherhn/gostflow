@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="yandex-verification" content="9c3fca68e115c191" />
-<title>ГОСТФлоу — Конструктор блок-схем</title>
+<title>ГОСТФлоу – Конструктор блок-схем</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
@@ -244,7 +244,7 @@
       <div class="text-[9px] font-semibold tracking-widest uppercase dark:text-gray-500 text-gray-400 mb-2">Произвольная</div>
       <button id="paletteCustomShape"
         class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg dark:border-dark-border border-light-border border cursor-pointer transition-all text-xs font-semibold dark:text-gray-200 text-gray-700 select-none hover:border-accent hover:text-accent dark:bg-dark-panel bg-light-panel text-left"
-        title="Кликните, затем ставьте точки на холсте. Двойной клик или Enter — завершить.">
+        title="Кликните, затем ставьте точки на холсте. Двойной клик или Enter – завершить.">
         <div class="w-7 h-5 flex items-center justify-center flex-shrink-0">
           <svg width="24" height="20" viewBox="0 0 24 20"><polygon points="12,1 22,7 18,18 6,18 2,7" fill="none" stroke="#a78bfa" stroke-width="1.5"/><circle cx="12" cy="1" r="2" fill="#a78bfa"/><circle cx="22" cy="7" r="2" fill="#a78bfa"/><circle cx="18" cy="18" r="2" fill="#a78bfa"/><circle cx="6" cy="18" r="2" fill="#a78bfa"/><circle cx="2" cy="7" r="2" fill="#a78bfa"/></svg>
         </div>
@@ -258,20 +258,20 @@
       <div class="text-[9px] font-semibold tracking-widest uppercase dark:text-gray-500 text-gray-400 mb-2">Подсказки</div>
       <div class="font-mono text-[10px] dark:text-gray-500 text-gray-400 leading-[1.8]">
         • Перетащи фигуру<br>
-        • Клик — выбор<br>
+        • Клик – выбор<br>
         • Hover → порт → стрелка<br>
-        • 🟡 порт — перенаправить<br>
-        • Del / Backspace — удалить<br>
-        • Ctrl+C/X/V — копировать<br>
-        • Ctrl+D — дублировать<br>
-        • Ctrl+A — выделить всё<br>
-        • Ctrl+Z — отмена<br>
-        • Ctrl+Y / Ctrl+Shift+Z — повтор<br>
-        • ←↑→↓ — сдвиг (Shift×10)<br>
-        • ПКМ — контекст. меню<br>
-        • Колесо — масштаб<br>
-        • ПКМ+тащи — панорама<br>
-        • <span class="text-accent">Параллельно</span>: клик в центр — выбор/перемещение; hover линии → стрелка
+        • 🟡 порт – перенаправить<br>
+        • Del / Backspace – удалить<br>
+        • Ctrl+C/X/V – копировать<br>
+        • Ctrl+D – дублировать<br>
+        • Ctrl+A – выделить всё<br>
+        • Ctrl+Z – отмена<br>
+        • Ctrl+Y / Ctrl+Shift+Z – повтор<br>
+        • ←↑→↓ – сдвиг (Shift×10)<br>
+        • ПКМ – контекст. меню<br>
+        • Колесо – масштаб<br>
+        • ПКМ+тащи – панорама<br>
+        • <span class="text-accent">Параллельно</span>: клик в центр – выбор/перемещение; hover линии → стрелка
       </div>
     </div>
   </div>
@@ -420,9 +420,9 @@
           <label class="block text-[10px] font-semibold tracking-wide uppercase dark:text-gray-500 text-gray-400 mb-1">Тип линии</label>
           <select id="propEdgeLineStyle"
             class="w-full dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-800 px-2.5 py-1.5 rounded-md font-mono text-[11px] outline-none transition-colors focus:border-accent">
-            <option value="solid">——— Сплошная</option>
+            <option value="solid">––– Сплошная</option>
             <option value="dashed">- - - Пунктирная</option>
-            <option value="chain">·—·— Штрихпунктир</option>
+            <option value="chain">·–·– Штрихпунктир</option>
           </select>
           <div class="mt-1 font-mono text-[9px] dark:text-gray-500 text-gray-400 leading-relaxed">По ГОСТ 2.303-68</div>
         </div>
@@ -433,7 +433,7 @@
           <div class="flex gap-1.5">
             <button id="edgeArrowNone" data-arrow="none"
               class="edge-arrow-btn flex-1 py-1.5 rounded-md font-mono text-[11px] cursor-pointer transition-all border dark:border-dark-border border-light-border dark:text-gray-200 text-gray-700 dark:hover:border-accent hover:border-accent hover:text-accent text-center">
-              ——
+              ––
             </button>
             <button id="edgeArrowEnd" data-arrow="end"
               class="edge-arrow-btn flex-1 py-1.5 rounded-md font-mono text-[11px] cursor-pointer transition-all border dark:border-dark-border border-light-border dark:text-gray-200 text-gray-700 dark:hover:border-accent hover:border-accent hover:text-accent text-center">
@@ -505,7 +505,7 @@
 <!-- STATUS BAR (contains floating sheet tabs above) -->
 <div class="dark:bg-dark-surface bg-light-surface dark:border-dark-border border-light-border border-t flex items-center flex-shrink-0" style="height:26px;position:relative;overflow:visible;">
 
-  <!-- Sheet tabs — float above the status bar, anchored to its top edge -->
+  <!-- Sheet tabs – float above the status bar, anchored to its top edge -->
   <div id="sheetsStrip" style="
     position:absolute;bottom:100%;left:192px;right:224px;
     height:28px;display:flex;align-items:flex-end;padding-left:6px;
@@ -617,7 +617,7 @@ let edgeIdCounter = 1;
 let hoveredPort = null;
 let hoveredNodeId = null;    // node the cursor is hovering near (for port visibility)
 let hoveredCustomPtIdx = -1; // index of the custom point hovered in the sidebar panel
-let snapTarget = null;       // { node, port } — magnetic snap candidate while drawing a connection
+let snapTarget = null;       // { node, port } – magnetic snap candidate while drawing a connection
 let connectingTemp = null;
 let connectingFromPort = null; // port id where drag started
 let connectingFromPortX = null; // stored X for parallel line-port attach point
@@ -780,7 +780,7 @@ function getNodeShape(node) {
         <line x1="${x}" y1="${y2}" x2="${x+w}" y2="${y2}" stroke-width="1.8"/>
       </g>`;
     }
-    // Комментарий по ГОСТ 19.003-80: скобка [ — вертикальная черта + верхний и нижний горизонтальные усы
+    // Комментарий по ГОСТ 19.003-80: скобка [ – вертикальная черта + верхний и нижний горизонтальные усы
     case 'comment': {
       const bw = Math.min(w * 0.3, h * 0.4); // длина усов скобки
       return `<g>
@@ -790,7 +790,7 @@ function getNodeShape(node) {
         <line x1="${x}" y1="${y+h}" x2="${x+bw}" y2="${y+h}" stroke-width="1.5"/>
       </g>`;
     }
-    // Произвольная фигура — polygon из нормализованных точек
+    // Произвольная фигура – polygon из нормализованных точек
     case 'custom': {
       const pts = node.customPoints && node.customPoints.length >= 3
         ? node.customPoints.map(([rx, ry]) => `${x + rx*w},${y + ry*h}`).join(' ')
@@ -862,7 +862,7 @@ function getPorts(node) {
       { id: 'bline', px: x + w / 2, py: y2, isLine: true, lineY: y2 },
     ];
   } else if (type === 'comment') {
-    // Скобка [: только три порта — верх, низ, лево (на вертикальной черте)
+    // Скобка [: только три порта – верх, низ, лево (на вертикальной черте)
     t = { id:'t', px: x,     py: y };
     b = { id:'b', px: x,     py: y+h };
     l = { id:'l', px: x,     py: y+h/2 };
@@ -932,7 +932,7 @@ function getBestToPort(targetNode, srcCenter, dropPt) {
   let best = null, bestScore = -Infinity;
   ports.forEach(p => {
     const pd = getPortDir(p.id); // direction pointing OUT of the node at this port
-    // We want the port where the SOURCE is "outside" — meaning the port faces the source
+    // We want the port where the SOURCE is "outside" – meaning the port faces the source
     // Port faces source if its direction is roughly opposite to dx,dy
     const score = -(pd[0] * dx + pd[1] * dy);
     if (score > bestScore) { bestScore = score; best = p; }
@@ -979,7 +979,7 @@ function pointInRect(px, py, rect) {
 // Alignment snap during node drag.
 // dragged: the node(s) being moved (array of node objects, already at new position).
 // excludeIds: Set of node ids to skip (the dragged ones).
-// Returns { dx, dy, guides[] } — corrections to apply and lines to draw.
+// Returns { dx, dy, guides[] } – corrections to apply and lines to draw.
 function computeAlignSnap(dragged, excludeIds) {
   const SNAP_SVG = 6 / zoom;
   const others = nodes.filter(n => !excludeIds.has(n.id) && n.type !== 'text');
@@ -1080,7 +1080,7 @@ function vSegIntersectsRect(px, ya, yb, rect) {
 // (routing functions replaced by A*-based system below)
 
 // ============================================================
-// ORTHOGONAL ROUTER — A*-based, strict 90° turns, obstacle-aware
+// ORTHOGONAL ROUTER – A*-based, strict 90° turns, obstacle-aware
 // ============================================================
 
 function waypointsToPath(pts) {
@@ -1151,7 +1151,7 @@ function buildOrthogonalWaypoints(edge, src, dst) {
   blockers.push({ x: src.x - MARGIN/2, y: src.y - MARGIN/2, w: src.w + MARGIN, h: src.h + MARGIN });
   blockers.push({ x: dst.x - MARGIN/2, y: dst.y - MARGIN/2, w: dst.w + MARGIN, h: dst.h + MARGIN });
 
-  // Check if user has manually repositioned a segment — respect it
+  // Check if user has manually repositioned a segment – respect it
   const offsets = edge.segOffsets || {};
   let midPts = null;
 
@@ -1289,7 +1289,7 @@ function aStarSparse(sx, sy, ex, ey, fd, td, blockers) {
   let iters = 0;
 
   while (open.length > 0 && iters++ < 4000) {
-    // Find min-f (simple linear scan — fast enough for small grids)
+    // Find min-f (simple linear scan – fast enough for small grids)
     let minIdx = 0;
     for (let k = 1; k < open.length; k++) {
       if (open[k].f < open[minIdx].f) minIdx = k;
@@ -1512,7 +1512,7 @@ function render() {
     const path = getEdgePath(edge);
     if (!path) return;
     const isSelected = selectedId === edge.id;
-    // Wide invisible hit area — same path but thick transparent stroke for easy clicking/dragging
+    // Wide invisible hit area – same path but thick transparent stroke for easy clicking/dragging
     const hitEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     hitEl.setAttribute('d', path);
     hitEl.setAttribute('fill', 'none');
@@ -1534,7 +1534,7 @@ function render() {
     if (lineStyle === 'dashed') {
       el.setAttribute('stroke-dasharray', '8,5');
     } else if (lineStyle === 'chain') {
-      // Штрихпунктир: штрих — три точки — штрих по ГОСТ 2.303-68
+      // Штрихпунктир: штрих – три точки – штрих по ГОСТ 2.303-68
       // dash, gap, dot, gap, dot, gap, dot, gap
       el.setAttribute('stroke-dasharray', '12,3,2,3,2,3,2,3');
     } else {
@@ -1557,7 +1557,7 @@ function render() {
 
     // Edge labels removed
 
-    // Draw draggable segment handles in orthogonal mode — always render hit areas, show dots only when selected
+    // Draw draggable segment handles in orthogonal mode – always render hit areas, show dots only when selected
     // Appended AFTER el so they sit on top and receive pointer events correctly
     if (edgeStyle === 'orthogonal') {
       const srcN = nodes.find(n => n.id === edge.from);
@@ -1585,7 +1585,7 @@ function render() {
           hitLine.setAttribute('stroke-width', '14');
           hg.appendChild(hitLine);
 
-          // Visual handle dot — only shown when edge is selected
+          // Visual handle dot – only shown when edge is selected
           if (isSelected) {
             const isStub = h.kind === 'stub_src' || h.kind === 'stub_dst';
             const circ = document.createElementNS('http://www.w3.org/2000/svg','circle');
@@ -1722,7 +1722,7 @@ function render() {
           child.setAttribute('stroke-width', strokeWidth);
           child.setAttribute('fill', 'none');
         } else {
-          // hitbox rect — keep transparent
+          // hitbox rect – keep transparent
           child.setAttribute('fill', 'transparent');
           child.setAttribute('stroke', 'none');
         }
@@ -1753,7 +1753,7 @@ function render() {
     if (isSelected && !isTextNode) bodyShape.setAttribute('filter', 'url(#glow)');
     grp.appendChild(bodyShape);
 
-    // Text — font properties (GOST overrides to Times New Roman at standard sizes)
+    // Text – font properties (GOST overrides to Times New Roman at standard sizes)
     {
     const textLines = (node.label || '').split('\n');
     const isTextNode = node.type === 'text';
@@ -1795,7 +1795,7 @@ function render() {
     });
     } // end if not inline-editing text
 
-    // Ports — skip for text nodes
+    // Ports – skip for text nodes
     const showPorts = !isTextNode && (isSelected || isConnectSrc || hoveredNodeId === node.id);
     if (node.type === 'parallel') {
       // Line-port highlight: glow the whole line on hover/select instead of circles
@@ -1837,7 +1837,7 @@ function render() {
       const isHovPort = hoveredPort && hoveredPort.nodeId === node.id && hoveredPort.portId === port.id;
       const portColor = isDark() ? '#4fffb0' : '#00c070';
 
-      // Large invisible hit area — makes ports easy to grab from nearby
+      // Large invisible hit area – makes ports easy to grab from nearby
       const hitCirc = document.createElementNS('http://www.w3.org/2000/svg','circle');
       hitCirc.setAttribute('cx', port.px);
       hitCirc.setAttribute('cy', port.py);
@@ -1865,7 +1865,7 @@ function render() {
     });
     } // end parallel else
 
-    // Parallel resize handles — left and right ends, shown when selected
+    // Parallel resize handles – left and right ends, shown when selected
     if (node.type === 'parallel' && isSelected) {
       const cy = node.y + node.h / 2;
       const handleR = 6;
@@ -1884,7 +1884,7 @@ function render() {
         hitR.dataset.side = side;
         grp.appendChild(hitR);
 
-        // Visible handle — double vertical bar
+        // Visible handle – double vertical bar
         const hg = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         hg.setAttribute('pointer-events', 'none');
         [-3, 3].forEach(dx => {
@@ -2032,7 +2032,7 @@ function render() {
     });
   }
 
-  // Temp connection line — use fixed fromPort, not dynamic closest
+  // Temp connection line – use fixed fromPort, not dynamic closest
   if (connectingFrom && connectingTemp) {
     const line = document.createElementNS('http://www.w3.org/2000/svg','line');
     const src = nodes.find(n => n.id === connectingFrom);
@@ -2250,7 +2250,7 @@ function startPolygonDraw(editNodeId) {
   }
   canvasWrap.style.cursor = 'crosshair';
   document.getElementById('paletteCustomLabel').textContent = '⏹ Рисование...';
-  document.getElementById('statMode').innerHTML = 'Режим: <span style="color:#a78bfa;font-weight:700">рисование фигуры — 2×клик или Enter для завершения</span>';
+  document.getElementById('statMode').innerHTML = 'Режим: <span style="color:#a78bfa;font-weight:700">рисование фигуры – 2×клик или Enter для завершения</span>';
   render();
 }
 
@@ -2339,7 +2339,7 @@ function updateProps() {
     document.getElementById('propTextGroup').style.display = '';
     document.getElementById('customPointsEditor').style.display = 'none';
 
-    // Font controls — show for nodes only
+    // Font controls – show for nodes only
     document.getElementById('propFontGroup').style.display = '';
     document.getElementById('propFontStyleGroup').style.display = '';
     document.getElementById('propFontFamily').disabled = false;
@@ -2753,7 +2753,7 @@ svg.addEventListener('mousemove', e => {
         node.x = draggingParallelResize.startNodeX + (draggingParallelResize.startNodeW - newW);
         node.w = newW;
       }
-      // Reset only stub offsets for connected edges — preserve manual mid-segment positions
+      // Reset only stub offsets for connected edges – preserve manual mid-segment positions
       edges.forEach(ed => {
         if (ed.from === node.id || ed.to === node.id) {
           if (!ed.segOffsets) ed.segOffsets = {};
@@ -2853,7 +2853,7 @@ svg.addEventListener('mousemove', e => {
     const { dx, dy, guides } = computeAlignSnap(draggedNodes, draggedIds);
     draggedNodes.forEach(n => { n.x += dx; n.y += dy; });
     alignSnapGuides = guides;
-    // Reset only stub offsets for edges connected to dragged nodes — preserve mid-segment positions
+    // Reset only stub offsets for edges connected to dragged nodes – preserve mid-segment positions
     edges.forEach(ed => {
       const fromDragged = draggedIds.has(ed.from);
       const toDragged   = draggedIds.has(ed.to);
@@ -2883,7 +2883,7 @@ svg.addEventListener('mousemove', e => {
     draggingNode.x += dx;
     draggingNode.y += dy;
     alignSnapGuides = guides;
-    // Reset only stub offsets for connected edges — preserve manual mid-segment positions
+    // Reset only stub offsets for connected edges – preserve manual mid-segment positions
     edges.forEach(ed => {
       if (ed.from === draggingNode.id || ed.to === draggingNode.id) {
         if (!ed.segOffsets) ed.segOffsets = {};
@@ -3067,7 +3067,7 @@ svg.addEventListener('mousedown', e => {
       : null;
 
     if (incomingEdge) {
-      // Hijack: take control of that existing edge — remove it and start dragging from its source
+      // Hijack: take control of that existing edge – remove it and start dragging from its source
       edges = edges.filter(ed => ed.id !== incomingEdge.id);
       connectingFrom = incomingEdge.from;
       connectingFromPort = incomingEdge.fromPort;
@@ -3087,7 +3087,7 @@ svg.addEventListener('mousedown', e => {
     e.stopPropagation(); return;
   }
 
-  // If NOT in connecting mode — handle drag/select
+  // If NOT in connecting mode – handle drag/select
   if (!connectingFrom) {
     const nodeGrp = target.closest('[data-kind="node"]');
     if (nodeGrp) {
@@ -3102,7 +3102,7 @@ svg.addEventListener('mousedown', e => {
           render(); updateProps(); return;
         }
         if (selectedIds.has(node.id) && selectedIds.size > 1) {
-          // Drag entire group — snapshot before move
+          // Drag entire group – snapshot before move
           saveHistory();
           multiDragOffsets = [...selectedIds].map(id => {
             const n = nodes.find(x => x.id === id);
@@ -3111,7 +3111,7 @@ svg.addEventListener('mousedown', e => {
           deleteZone.style.display = 'flex';
           render(); return;
         }
-        // Single node drag — snapshot before move
+        // Single node drag – snapshot before move
         saveHistory();
         selectedIds.clear();
         selectedIds.add(node.id);
@@ -3129,7 +3129,7 @@ svg.addEventListener('mousedown', e => {
       selectedId = edgeEl.dataset.id;
       render(); updateProps(); return;
     }
-    // Clicked empty canvas — start rubber-band
+    // Clicked empty canvas – start rubber-band
     selectedId = null;
     selectedIds.clear();
     selectionStart = svgPoint(e);
@@ -3163,7 +3163,7 @@ svg.addEventListener('mouseup', e => {
   // End group drag
   if (multiDragOffsets.length > 0) {
     if (isOverDeleteZone(e.clientX, e.clientY)) {
-      // State before drag was saved at mousedown — just mutate
+      // State before drag was saved at mousedown – just mutate
       const toDelete = new Set(multiDragOffsets.map(d => d.node.id));
       nodes = nodes.filter(n => !toDelete.has(n.id));
       edges = edges.filter(ed => !toDelete.has(ed.from) && !toDelete.has(ed.to));
@@ -3181,7 +3181,7 @@ svg.addEventListener('mouseup', e => {
   // End single node drag
   if (draggingNode) {
     if (isOverDeleteZone(e.clientX, e.clientY)) {
-      // State before drag was saved at mousedown — just mutate
+      // State before drag was saved at mousedown – just mutate
       nodes = nodes.filter(n => n.id !== draggingNode.id);
       edges = edges.filter(ed => ed.from !== draggingNode.id && ed.to !== draggingNode.id);
       selectedIds.clear(); selectedId = null;
@@ -3196,7 +3196,7 @@ svg.addEventListener('mouseup', e => {
   }
   isPanning = false;
 
-  // Complete connection on mouseup — works for both drag and click
+  // Complete connection on mouseup – works for both drag and click
   if (connectingFrom) {
     const pt = svgPoint(e);
 
@@ -3285,7 +3285,7 @@ svg.addEventListener('mouseup', e => {
       render(); return;
     }
 
-    // Released on empty canvas — cancel
+    // Released on empty canvas – cancel
     connectingFrom = null; connectingFromPort = null; connectingFromPortX = null; connectingTemp = null; snapTarget = null; hoveredNodeId = null; hoveredPort = null;
     render();
   }
@@ -3647,7 +3647,7 @@ function showContextMenu(e, nodeId) {
   if (mRect.right > window.innerWidth) menu.style.left = (e.clientX - mRect.width) + 'px';
   if (mRect.bottom > window.innerHeight) menu.style.top = (e.clientY - mRect.height) + 'px';
 
-  // Close on outside click or Escape — use named refs so contextmenu events aren't swallowed
+  // Close on outside click or Escape – use named refs so contextmenu events aren't swallowed
   function onOutsideClick(ev) {
     if (_ctxMenu && !_ctxMenu.contains(ev.target)) {
       removeContextMenu();
@@ -3695,7 +3695,7 @@ document.addEventListener('keydown', e => {
   // ВАЖНО: используем e.code (физическая клавиша), а не e.key,
   // чтобы сочетания работали при любой раскладке (в т.ч. русской).
   if (e.ctrlKey || e.metaKey) {
-    const code = e.code; // 'KeyZ', 'KeyC', 'KeyV', ... — не зависит от раскладки
+    const code = e.code; // 'KeyZ', 'KeyC', 'KeyV', ... – не зависит от раскладки
 
     // Undo: Ctrl+Z
     if (code === 'KeyZ' && !e.shiftKey) {
@@ -3724,19 +3724,19 @@ document.addEventListener('keydown', e => {
       if (!isEditing) { e.preventDefault(); e.stopPropagation(); pasteClipboard(24, 24); }
       return;
     }
-    // Duplicate: Ctrl+D — также блокирует «Добавить в закладки»
+    // Duplicate: Ctrl+D – также блокирует «Добавить в закладки»
     if (code === 'KeyD') {
       e.preventDefault(); e.stopPropagation();
       if (!isEditing) duplicateSelected();
       return;
     }
-    // Select All: Ctrl+A — блокирует выделение текста страницы
+    // Select All: Ctrl+A – блокирует выделение текста страницы
     if (code === 'KeyA') {
       e.preventDefault(); e.stopPropagation();
       if (!isEditing) selectAll();
       return;
     }
-    // Ctrl+S — блокируем «Сохранить страницу» браузера
+    // Ctrl+S – блокируем «Сохранить страницу» браузера
     if (code === 'KeyS') {
       e.preventDefault(); e.stopPropagation();
       return;
@@ -3747,7 +3747,7 @@ document.addEventListener('keydown', e => {
 
   // ── Single-key shortcuts (only when not editing) ─────────────
 
-  // Delete / Backspace — e.preventDefault() MUST be called first to stop browser back-navigation
+  // Delete / Backspace – e.preventDefault() MUST be called first to stop browser back-navigation
   if (e.key === 'Delete' || e.key === 'Backspace') {
     e.preventDefault(); e.stopPropagation();
     let changed = false;
@@ -3774,7 +3774,7 @@ document.addEventListener('keydown', e => {
     return;
   }
 
-  // Escape — deselect / cancel connecting
+  // Escape – deselect / cancel connecting
   if (e.key === 'Escape') {
     e.preventDefault(); e.stopPropagation();
     connectingFrom = null; connectingTemp = null; snapTarget = null;
@@ -3783,7 +3783,7 @@ document.addEventListener('keydown', e => {
     return;
   }
 
-  // Arrow keys — nudge selected nodes (1px normal, 10px with Shift)
+  // Arrow keys – nudge selected nodes (1px normal, 10px with Shift)
   if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
     const hasSelection = selectedIds.size > 0 || (selectedId && nodes.find(n => n.id === selectedId));
     if (!hasSelection) return;
@@ -3800,7 +3800,7 @@ document.addEventListener('keydown', e => {
     return;
   }
 
-}, true); // capture phase — runs before any child handler and before browser defaults
+}, true); // capture phase – runs before any child handler and before browser defaults
 
 // ============================================================
 // TOOLBAR BUTTONS
@@ -3949,7 +3949,7 @@ function renderSheetTabs() {
 
     const tab = document.createElement('div');
     tab.dataset.sheetId = sheet.id;
-    tab.title = 'Двойной клик — переименовать';
+    tab.title = 'Двойной клик – переименовать';
     tab.style.cssText = `
       position: relative;
       display: flex;
