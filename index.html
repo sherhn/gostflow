@@ -914,13 +914,24 @@ document.getElementById('nodePalette').addEventListener('click', (e) => {
 
   cw.addEventListener('touchstart', (e) => {
     if (e.touches.length === 1) {
-      // Single finger: potential pan OR tap on shape
-      touchPanActive = true;
-      lastTouchX = e.touches[0].clientX;
-      lastTouchY = e.touches[0].clientY;
+      const touch = e.touches[0];
+      lastTouchX = touch.clientX;
+      lastTouchY = touch.clientY;
       touchStartX = lastTouchX;
       touchStartY = lastTouchY;
       touchMoved = false;
+
+      // If the finger landed on an interactive SVG element, disable pan
+      // so the SVG touch handler can take ownership of this gesture.
+      const elUnder = document.elementFromPoint(touch.clientX, touch.clientY);
+      const onInteractive = elUnder && (
+        elUnder.closest('[data-kind="node"]') ||
+        elUnder.closest('[data-kind="edge"]') ||
+        elUnder.closest('[data-kind="seghandle"]') ||
+        elUnder.closest('[data-kind="parallelResize"]') ||
+        (elUnder.dataset && elUnder.dataset.kind === 'port')
+      );
+      touchPanActive = !onInteractive;
     } else if (e.touches.length === 2) {
       // Two fingers: pinch zoom
       touchPanActive = false;
@@ -963,9 +974,8 @@ document.getElementById('nodePalette').addEventListener('click', (e) => {
         touchMoved = true;
       }
 
-      if (touchMoved) {
-        // Check if touch started on a node — if so, don't pan (let SVG handle drag)
-        // We pan only when touching empty canvas
+      if (touchMoved && touchPanActive) {
+        // Pan only when touch started on empty canvas (touchPanActive=true)
         if (window.pan) {
           window.pan.x += dx;
           window.pan.y += dy;
@@ -3735,6 +3745,165 @@ svg.addEventListener('mouseleave', () => {
     render(); updateProps();
   }
 });
+
+// ============================================================
+// TOUCH SUPPORT FOR SVG INTERACTIONS (mobile)
+// Translates single-finger touch events into the same logic
+// as mousedown/mousemove/mouseup so that:
+//  - nodes can be dragged
+//  - arrows can be drawn from ports
+//  - parallel figures can be resized
+//  - edge segments can be dragged
+// Two-finger pinch zoom is handled separately in canvasWrap.
+// ============================================================
+(function () {
+  // Helper: get SVG canvas point from a Touch object
+  function svgPointFromTouch(touch) {
+    const rect = svg.getBoundingClientRect();
+    return {
+      x: (touch.clientX - rect.left - pan.x) / zoom,
+      y: (touch.clientY - rect.top  - pan.y) / zoom,
+    };
+  }
+
+  // State: are we currently doing a canvas-pan or an SVG interaction?
+  let svgTouchActive = false;   // true when this handler "owns" the touch
+  let touchStartClientX = 0;
+  let touchStartClientY = 0;
+  let touchHasMoved = false;
+  const MOVE_THRESHOLD = 6; // px before we commit to move vs tap
+
+  svg.addEventListener('touchstart', function (e) {
+    if (e.touches.length !== 1) return; // ignore multi-touch
+
+    const touch = e.touches[0];
+    touchStartClientX = touch.clientX;
+    touchStartClientY = touch.clientY;
+    touchHasMoved = false;
+
+    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (!target) return;
+
+    // Check if touch is on an interactive SVG element
+    const onParallelResize = target.closest('[data-kind="parallelResize"]');
+    const onSegHandle      = target.closest('[data-kind="seghandle"]');
+    const onPort           = target.dataset && target.dataset.kind === 'port';
+    const onNode           = target.closest('[data-kind="node"]');
+    const onEdge           = target.closest('[data-kind="edge"]');
+
+    if (onParallelResize || onSegHandle || onPort || onNode || onEdge) {
+      // This touch belongs to SVG interaction – prevent canvasWrap pan
+      svgTouchActive = true;
+      e.stopPropagation(); // stop canvasWrap touchstart from firing
+      e.preventDefault();
+
+      // Synthesise mousedown
+      const synth = new MouseEvent('mousedown', {
+        bubbles: true, cancelable: true,
+        clientX: touch.clientX, clientY: touch.clientY,
+        button: 0,
+      });
+      // Dispatch on the actual element under finger
+      target.dispatchEvent(synth);
+    } else {
+      svgTouchActive = false;
+    }
+  }, { passive: false });
+
+  svg.addEventListener('touchmove', function (e) {
+    if (!svgTouchActive || e.touches.length !== 1) return;
+    e.stopPropagation();
+    e.preventDefault();
+
+    const touch = e.touches[0];
+
+    // Track whether we actually moved
+    if (!touchHasMoved) {
+      const dx = touch.clientX - touchStartClientX;
+      const dy = touch.clientY - touchStartClientY;
+      if (Math.hypot(dx, dy) > MOVE_THRESHOLD) touchHasMoved = true;
+    }
+
+    // Synthesise mousemove on SVG
+    const synth = new MouseEvent('mousemove', {
+      bubbles: true, cancelable: true,
+      clientX: touch.clientX, clientY: touch.clientY,
+    });
+    svg.dispatchEvent(synth);
+  }, { passive: false });
+
+  svg.addEventListener('touchend', function (e) {
+    if (!svgTouchActive) return;
+    svgTouchActive = false;
+    e.stopPropagation();
+    e.preventDefault();
+
+    // Use changedTouches because touches[0] is gone
+    const touch = e.changedTouches[0];
+
+    // Synthesise mouseup
+    const synthUp = new MouseEvent('mouseup', {
+      bubbles: true, cancelable: true,
+      clientX: touch.clientX, clientY: touch.clientY,
+      button: 0,
+    });
+    svg.dispatchEvent(synthUp);
+
+    // If it was a quick tap (no movement), also fire a click so selection / port-tap works
+    if (!touchHasMoved) {
+      const el = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (el) {
+        const synthClick = new MouseEvent('click', {
+          bubbles: true, cancelable: true,
+          clientX: touch.clientX, clientY: touch.clientY,
+        });
+        el.dispatchEvent(synthClick);
+      }
+    }
+  }, { passive: false });
+
+  svg.addEventListener('touchcancel', function (e) {
+    if (!svgTouchActive) return;
+    svgTouchActive = false;
+    const touch = e.changedTouches[0];
+    if (touch) {
+      const synthUp = new MouseEvent('mouseup', {
+        bubbles: true, cancelable: true,
+        clientX: touch.clientX, clientY: touch.clientY,
+        button: 0,
+      });
+      svg.dispatchEvent(synthUp);
+    }
+  }, { passive: false });
+
+  // ---- Port visibility on touch ----
+  // On mobile there is no mousemove hover, so ports are never shown.
+  // When the user taps a node (touchstart on a node element), briefly
+  // reveal its ports so a second tap can start a connection.
+  svg.addEventListener('touchstart', function (e) {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (!target) return;
+
+    const nodeGrp = target.closest('[data-kind="node"]');
+    if (nodeGrp) {
+      // Show ports for this node if it is already selected
+      // (first tap selects, second tap near port starts connection)
+      if (hoveredNodeId !== nodeGrp.dataset.id) {
+        hoveredNodeId = nodeGrp.dataset.id;
+        render();
+      }
+    } else {
+      // Tapped outside – hide ports
+      if (hoveredNodeId !== null) {
+        hoveredNodeId = null;
+        hoveredPort = null;
+        render();
+      }
+    }
+  }, { passive: true }); // passive ok here – just for hover state
+})();
 
 // ============================================================
 // INLINE TEXT EDITING ON DOUBLE-CLICK
