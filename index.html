@@ -285,6 +285,17 @@
     <button class="btn font-mono text-xs px-3.5 py-1.5 rounded-md dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-700 cursor-pointer transition-all hover:border-accent hover:text-accent" id="btnImportJSON">↑ Импорт</button>
     <button class="btn font-mono text-xs px-3.5 py-1.5 rounded-md bg-accent text-black border border-accent font-semibold cursor-pointer transition-all hover:bg-emerald-400" id="btnClear">Очистить</button>
 
+    <!-- GitHub Star -->
+    <a href="https://github.com/sherhn/gostflow" target="_blank" rel="noopener noreferrer" id="ghStarBtn"
+       class="btn font-mono text-xs px-3.5 py-1.5 rounded-md dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-700 cursor-pointer transition-all hover:border-accent hover:text-accent flex items-center gap-1.5 no-underline"
+       aria-label="Star on GitHub">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="flex-shrink:0">
+        <path d="M8 .25a7.75 7.75 0 0 0-2.45 15.1c.39.07.53-.17.53-.37v-1.3c-2.14.47-2.59-1.03-2.59-1.03-.35-.89-.86-1.13-.86-1.13-.7-.48.05-.47.05-.47.78.05 1.19.8 1.19.8.69 1.18 1.81.84 2.25.64.07-.5.27-.84.49-1.03-1.71-.19-3.51-.85-3.51-3.8 0-.84.3-1.52.79-2.06-.08-.2-.34-1 .08-2.07 0 0 .65-.21 2.12.79a7.4 7.4 0 0 1 3.86 0c1.47-1 2.12-.79 2.12-.79.42 1.07.16 1.87.08 2.07.49.54.79 1.22.79 2.06 0 2.96-1.8 3.61-3.52 3.8.28.24.52.7.52 1.41v2.1c0 .2.14.45.54.37A7.75 7.75 0 0 0 8 .25Z"/>
+      </svg>
+      Star
+      <span id="ghStarCount" style="display:none;background:rgba(0,0,0,.18);padding:0 5px;border-radius:3px;font-size:.65rem;line-height:1.6"></span>
+    </a>
+
     <!-- Theme Toggle -->
     <div class="flex items-center gap-1.5 ml-1">
       <span class="text-xs dark:text-gray-500 text-gray-400 select-none">☀</span>
@@ -321,6 +332,17 @@
   <!-- Clear -->
   <button class="mtb-btn danger dark:bg-dark-panel bg-light-panel"
     title="Очистить" onclick="document.getElementById('btnClear').click()">CLR</button>
+
+  <div class="mtb-sep dark:text-gray-500 text-gray-300"></div>
+
+  <!-- GitHub Star -->
+  <a href="https://github.com/sherhn/gostflow" target="_blank" rel="noopener noreferrer"
+     class="mtb-btn dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border dark:text-gray-200 text-gray-700"
+     title="Star on GitHub" style="text-decoration:none">
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M8 .25a7.75 7.75 0 0 0-2.45 15.1c.39.07.53-.17.53-.37v-1.3c-2.14.47-2.59-1.03-2.59-1.03-.35-.89-.86-1.13-.86-1.13-.7-.48.05-.47.05-.47.78.05 1.19.8 1.19.8.69 1.18 1.81.84 2.25.64.07-.5.27-.84.49-1.03-1.71-.19-3.51-.85-3.51-3.8 0-.84.3-1.52.79-2.06-.08-.2-.34-1 .08-2.07 0 0 .65-.21 2.12.79a7.4 7.4 0 0 1 3.86 0c1.47-1 2.12-.79 2.12-.79.42 1.07.16 1.87.08 2.07.49.54.79 1.22.79 2.06 0 2.96-1.8 3.61-3.52 3.8.28.24.52.7.52 1.41v2.1c0 .2.14.45.54.37A7.75 7.75 0 0 0 8 .25Z"/>
+    </svg>
+  </a>
 
   <!-- More -->
   <button class="mtb-btn dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border dark:text-gray-200 text-gray-700"
@@ -5029,6 +5051,22 @@ window.updateMinimap = updateMinimap;
 window.render = render;
 window.updateProps = updateProps;
 window.updateStatus = updateStatus;
+</script>
+<script>
+(async () => {
+  try {
+    const res = await fetch('https://api.github.com/repos/sherhn/gostflow', { cache: 'force-cache' });
+    if (res.ok) {
+      const data = await res.json();
+      const count = data.stargazers_count;
+      if (typeof count === 'number') {
+        const el = document.getElementById('ghStarCount');
+        el.textContent = count >= 1000 ? (count / 1000).toFixed(1) + 'k' : String(count);
+        el.style.display = '';
+      }
+    }
+  } catch (_) {}
+})();
 </script>
 </body>
 </html>
