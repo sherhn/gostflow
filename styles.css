@@ -1200,3 +1200,213 @@ img,video{max-width:100%;height:auto}
 .dark\:hover\:text-gray-200:hover:is(.dark *){--tw-text-opacity:1;color:rgb(229 231 235 / var(--tw-text-opacity, 1))}
 
 .dark\:hover\:text-gray-300:hover:is(.dark *){--tw-text-opacity:1;color:rgb(209 213 219 / var(--tw-text-opacity, 1))}
+/* ============================================================
+   AI FLOWCHART WIDGET
+   ============================================================ */
+
+@keyframes aiWidgetPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(79,255,176,0.45),
+                0 12px 40px rgba(79,255,176,0.28),
+                0 4px 12px rgba(0,0,0,0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(79,255,176,0),
+                0 12px 40px rgba(79,255,176,0.38),
+                0 4px 12px rgba(0,0,0,0.4);
+  }
+}
+
+@keyframes aiIconSpin {
+  0%   { transform: rotate(0deg) scale(1); }
+  50%  { transform: rotate(180deg) scale(1.2); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+/* Base widget */
+#aiFlowWidget {
+  position: fixed;
+  bottom: 24px;
+  right: 20px;
+  left: auto;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 26px 18px 18px;
+  border-radius: 22px;
+  border: 2px solid rgba(79,255,176,0.65);
+  background: linear-gradient(135deg, rgba(13,15,20,0.97) 0%, rgba(19,24,40,0.97) 100%);
+  box-shadow: 0 12px 40px rgba(79,255,176,0.28), 0 4px 12px rgba(0,0,0,0.4);
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  font-family: 'JetBrains Mono', monospace;
+  max-width: 360px;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  animation: aiWidgetPulse 2.8s ease-in-out infinite;
+}
+
+#aiFlowWidget:hover {
+  animation: none;
+  border-color: rgba(79,255,176,1);
+  box-shadow: 0 16px 52px rgba(79,255,176,0.38), 0 4px 16px rgba(0,0,0,0.5);
+  transform: translateY(-3px) scale(1.02);
+}
+
+#aiFlowWidget:hover .ai-arrow {
+  transform: translateX(4px);
+}
+
+/* Badge */
+#aiFlowWidget .ai-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #4fffb0;
+  color: #0a0f1a;
+  font-size: 8.5px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  padding: 2px 7px;
+  border-radius: 99px;
+  text-transform: uppercase;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+/* Icon wrapper */
+#aiFlowWidget .ai-icon-wrap {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(79,255,176,0.22) 0%, rgba(107,138,255,0.22) 100%);
+  border: 1px solid rgba(79,255,176,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 28px;
+  line-height: 1;
+}
+
+/* Spinning star icon */
+#aiFlowWidget .ai-icon-star {
+  display: inline-block;
+  color: #4fffb0;
+  animation: aiIconSpin 5s linear infinite;
+}
+
+/* Text block */
+#aiFlowWidget .ai-text-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+#aiFlowWidget .ai-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #4fffb0;
+  white-space: nowrap;
+  letter-spacing: 0.03em;
+}
+
+#aiFlowWidget .ai-subtitle {
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+/* Arrow */
+#aiFlowWidget .ai-arrow {
+  font-size: 22px;
+  color: rgba(79,255,176,0.7);
+  flex-shrink: 0;
+  margin-left: 2px;
+  transition: transform 0.22s ease;
+}
+
+/* ---- Light theme overrides ---- */
+html:not(.dark) #aiFlowWidget {
+  background: linear-gradient(135deg, #ffffff 0%, #edfff6 100%);
+  border-color: rgba(5,150,105,0.6);
+  box-shadow: 0 12px 40px rgba(5,150,105,0.18), 0 4px 12px rgba(0,0,0,0.08);
+  animation: none;
+}
+
+html:not(.dark) #aiFlowWidget:hover {
+  border-color: rgba(5,150,105,1);
+  box-shadow: 0 16px 52px rgba(5,150,105,0.28), 0 4px 16px rgba(0,0,0,0.1);
+}
+
+html:not(.dark) #aiFlowWidget .ai-badge {
+  background: #059669;
+  color: #fff;
+}
+
+html:not(.dark) #aiFlowWidget .ai-icon-wrap {
+  background: linear-gradient(135deg, rgba(5,150,105,0.12) 0%, rgba(107,138,255,0.1) 100%);
+  border-color: rgba(5,150,105,0.3);
+}
+
+html:not(.dark) #aiFlowWidget .ai-icon-star { color: #059669; }
+html:not(.dark) #aiFlowWidget .ai-title    { color: #059669; }
+html:not(.dark) #aiFlowWidget .ai-subtitle { color: rgba(0,0,0,0.45); }
+html:not(.dark) #aiFlowWidget .ai-arrow    { color: rgba(5,150,105,0.7); }
+
+/* ---- Mobile: left side, smaller ---- */
+@media (max-width: 768px) {
+  #aiFlowWidget {
+    right: auto;
+    left: 12px;
+    bottom: 62px;
+    z-index: 100;
+    gap: 9px;
+    padding: 10px 14px 10px 10px;
+    border-radius: 14px;
+    max-width: 220px;
+  }
+
+  #aiFlowWidget .ai-icon-wrap {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    font-size: 17px;
+  }
+
+  #aiFlowWidget .ai-title {
+    font-size: 11px;
+  }
+
+  #aiFlowWidget .ai-subtitle {
+    font-size: 8.5px;
+  }
+
+  #aiFlowWidget .ai-arrow {
+    font-size: 14px;
+  }
+
+  #aiFlowWidget .ai-badge {
+    font-size: 7.5px;
+    padding: 1px 5px;
+    top: -7px;
+    right: -7px;
+  }
+}
+
+/* ============================================================
+   MINIMAP — desktop: move to bottom-left
+   ============================================================ */
+@media (min-width: 769px) {
+  #minimap {
+    right: auto !important;
+    left: 8px !important;
+    bottom: 62px !important;
+  }
+}
