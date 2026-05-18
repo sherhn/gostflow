@@ -1765,7 +1765,7 @@ function render() {
   edges.forEach(edge => {
     const path = getEdgePath(edge);
     if (!path) return;
-    const isSelected = selectedId === edge.id;
+    const isSelected = selectedId === edge.id || selectedIds.has(edge.id);
     // Wide invisible hit area – same path but thick transparent stroke for easy clicking/dragging
     const hitEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     hitEl.setAttribute('d', path);
@@ -3457,12 +3457,16 @@ svg.addEventListener('mousemove', e => {
 
   // Group drag
   if (multiDragOffsets.length > 0) {
-    multiDragOffsets.forEach(({ node, ox, oy }) => {
-      node.x = pt.x - ox;
-      node.y = pt.y - oy;
+    multiDragOffsets.forEach(item => {
+      if (item.node) {
+        item.node.x = pt.x - item.ox;
+        item.node.y = pt.y - item.oy;
+      } else if (item.edge && item.edge.customWaypoints) {
+        item.edge.customWaypoints = item.waypointOffsets.map(([ox, oy]) => [pt.x - ox, pt.y - oy]);
+      }
     });
-    // Alignment snap for the group
-    const draggedNodes = multiDragOffsets.map(d => d.node);
+    // Alignment snap for the group (nodes only)
+    const draggedNodes = multiDragOffsets.filter(d => d.node).map(d => d.node);
     const draggedIds = new Set(draggedNodes.map(n => n.id));
     const { dx, dy, guides } = computeAlignSnap(draggedNodes, draggedIds);
     draggedNodes.forEach(n => { n.x += dx; n.y += dy; });
@@ -3522,11 +3526,22 @@ svg.addEventListener('mousemove', e => {
     const rw = Math.abs(pt.x - selectionStart.x);
     const rh = Math.abs(pt.y - selectionStart.y);
     selectionRect = { x: rx, y: ry, w: rw, h: rh };
-    // Live-update selected set
+    // Live-update selected set (nodes)
     selectedIds = new Set(nodes.filter(n =>
       n.x + n.w > rx && n.x < rx + rw &&
       n.y + n.h > ry && n.y < ry + rh
     ).map(n => n.id));
+    // Also include free-drawn path edges whose bounding box intersects the selection rect
+    edges.forEach(ed => {
+      if (!ed.customWaypoints || ed.customWaypoints.length < 2) return;
+      const xs = ed.customWaypoints.map(p => p[0]);
+      const ys = ed.customWaypoints.map(p => p[1]);
+      const ex1 = Math.min(...xs), ex2 = Math.max(...xs);
+      const ey1 = Math.min(...ys), ey2 = Math.max(...ys);
+      if (ex2 > rx && ex1 < rx + rw && ey2 > ry && ey1 < ry + rh) {
+        selectedIds.add(ed.id);
+      }
+    });
     render(); return;
   }
 
@@ -3800,9 +3815,12 @@ svg.addEventListener('mousedown', e => {
         if (selectedIds.has(node.id) && selectedIds.size > 1) {
           // Drag entire group – snapshot before move
           saveHistory();
-          multiDragOffsets = [...selectedIds].map(id => {
+          multiDragOffsets = [...selectedIds].flatMap(id => {
             const n = nodes.find(x => x.id === id);
-            return { node: n, ox: pt.x - n.x, oy: pt.y - n.y };
+            if (n) return [{ node: n, ox: pt.x - n.x, oy: pt.y - n.y }];
+            const ed = edges.find(x => x.id === id && x.customWaypoints);
+            if (ed) return [{ edge: ed, waypointOffsets: ed.customWaypoints.map(([wx, wy]) => [pt.x - wx, pt.y - wy]) }];
+            return [];
           });
           deleteZone.style.display = 'flex';
           render(); return;
@@ -3821,8 +3839,41 @@ svg.addEventListener('mousedown', e => {
     }
     const edgeEl = target.closest('[data-kind="edge"]');
     if (edgeEl) {
+      const edgeId = edgeEl.dataset.id;
+      const ed = edges.find(x => x.id === edgeId);
+      // Shift+click: toggle path edge in multi-selection
+      if (e.shiftKey && ed && ed.customWaypoints) {
+        if (selectedIds.has(edgeId)) selectedIds.delete(edgeId);
+        else selectedIds.add(edgeId);
+        selectedId = null;
+        render(); updateProps(); return;
+      }
+      // If this path edge is part of a multi-selection, start group drag
+      if (ed && ed.customWaypoints && selectedIds.has(edgeId) && selectedIds.size > 1) {
+        saveHistory();
+        const pt2 = svgPoint(e);
+        selectedId = edgeId;
+        multiDragOffsets = [...selectedIds].flatMap(id => {
+          const n = nodes.find(x => x.id === id);
+          if (n) return [{ node: n, ox: pt2.x - n.x, oy: pt2.y - n.y }];
+          const e2 = edges.find(x => x.id === id && x.customWaypoints);
+          if (e2) return [{ edge: e2, waypointOffsets: e2.customWaypoints.map(([wx, wy]) => [pt2.x - wx, pt2.y - wy]) }];
+          return [];
+        });
+        deleteZone.style.display = 'flex';
+        render(); updateProps(); return;
+      }
       selectedIds.clear();
-      selectedId = edgeEl.dataset.id;
+      selectedId = edgeId;
+      // Allow dragging free-drawn path edges
+      if (ed && ed.customWaypoints && ed.customWaypoints.length >= 2) {
+        const pt2 = svgPoint(e);
+        saveHistory();
+        selectedIds.add(edgeId);
+        multiDragOffsets = [{ edge: ed, waypointOffsets: ed.customWaypoints.map(([wx, wy]) => [pt2.x - wx, pt2.y - wy]) }];
+        deleteZone.style.display = 'flex';
+        render(); updateProps(); return;
+      }
       render(); updateProps(); return;
     }
     // Clicked empty canvas – start rubber-band
@@ -3868,9 +3919,10 @@ svg.addEventListener('mouseup', e => {
   if (multiDragOffsets.length > 0) {
     if (isOverDeleteZone(e.clientX, e.clientY)) {
       // State before drag was saved at mousedown – just mutate
-      const toDelete = new Set(multiDragOffsets.map(d => d.node.id));
-      nodes = nodes.filter(n => !toDelete.has(n.id));
-      edges = edges.filter(ed => !toDelete.has(ed.from) && !toDelete.has(ed.to));
+      const toDeleteNodeIds = new Set(multiDragOffsets.filter(d => d.node).map(d => d.node.id));
+      const toDeleteEdgeIds = new Set(multiDragOffsets.filter(d => d.edge).map(d => d.edge.id));
+      nodes = nodes.filter(n => !toDeleteNodeIds.has(n.id));
+      edges = edges.filter(ed => !toDeleteNodeIds.has(ed.from) && !toDeleteNodeIds.has(ed.to) && !toDeleteEdgeIds.has(ed.id));
       selectedIds.clear(); selectedId = null;
       updateStatus(); updateProps();
     }
@@ -5269,7 +5321,7 @@ document.getElementById('btnAddSheet').addEventListener('click', addSheet);
   const dark = () => document.documentElement.classList.contains('dark');
 
   const widget = document.createElement('a');
-  widget.href = '/ai-flowchart';
+  widget.href = '/ai-flowchart-guide';
   widget.id = 'aiFlowWidget';
   widget.title = 'ИИ создание блок-схем — бесплатно';
   widget.style.cssText = `
