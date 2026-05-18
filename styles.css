@@ -448,17 +448,17 @@ select:disabled, input:disabled { opacity: 0.45; cursor: not-allowed; }
   #mobileMoreMenu { position: fixed; top: 96px; right: 8px; z-index: 300; display: none; flex-direction: column; gap: 4px; padding: 8px; border-radius: 10px; border: 1px solid; min-width: 160px; box-shadow: rgba(0, 0, 0, 0.4) 0px 8px 24px; }
   #mobileMoreMenu.open { display: flex; }
   .mmm-btn { width: 100%; text-align: left; padding: 9px 12px; border-radius: 7px; font-family: "JetBrains Mono", monospace; font-size: 12px; font-weight: 500; border: 1px solid transparent; cursor: pointer; background: transparent; transition: 0.12s; -webkit-tap-highlight-color: transparent; }
-  #leftSidebar { bottom: 26px; left: 0px; right: 0px; max-height: 50vh; overflow-y: auto; z-index: 150; transform: translateY(100%); transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1); border-top: 1px solid; position: fixed !important; width: 100% !important; border-right-width: medium !important; border-right-style: none !important; border-right-color: currentcolor !important; }
+  #leftSidebar { bottom: 0px; left: 0px; right: 0px; max-height: 50vh; overflow-y: auto; z-index: 150; transform: translateY(100%); transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1); border-top: 1px solid; position: fixed !important; width: 100% !important; border-right-width: medium !important; border-right-style: none !important; border-right-color: currentcolor !important; }
   #leftSidebar.mobile-open { transform: translateY(0px); }
-  #rightSidebar { bottom: 26px; left: 0px; right: 0px; max-height: 55vh; overflow-y: auto; z-index: 150; transform: translateY(100%); transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1); border-top: 1px solid; position: fixed !important; width: 100% !important; border-left-width: medium !important; border-left-style: none !important; border-left-color: currentcolor !important; }
+  #rightSidebar { bottom: 0px; left: 0px; right: 0px; max-height: 55vh; overflow-y: auto; z-index: 150; transform: translateY(100%); transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1); border-top: 1px solid; position: fixed !important; width: 100% !important; border-left-width: medium !important; border-left-style: none !important; border-left-color: currentcolor !important; }
   #rightSidebar.mobile-open { transform: translateY(0px); }
-  #mobileFabs { position: fixed; bottom: 34px; right: 12px; flex-direction: column; gap: 8px; z-index: 120; display: flex !important; }
+  #mobileFabs { position: fixed; bottom: 8px; right: 12px; flex-direction: column; gap: 8px; z-index: 120; display: flex !important; }
   .mobile-fab { width: 44px; height: 44px; border-radius: 12px; border: 1px solid; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.15s; box-shadow: rgba(0, 0, 0, 0.4) 0px 4px 12px; }
   .mobile-fab.active { border-color: rgb(79, 255, 176) !important; color: rgb(79, 255, 176) !important; }
-  #statusBar { font-size: 9px; height: 26px; }
+  #statusBar { display: none !important; }
   #sheetsStrip { left: 0px !important; right: 0px !important; }
   #canvasWrap { width: 100% !important; }
-  #minimap { width: 90px !important; height: 58px !important; bottom: 32px !important; right: 60px !important; }
+  #minimap { width: 90px !important; height: 58px !important; bottom: 8px !important; right: 60px !important; }
   header { padding: 6px 10px; }
   header .text-lg { font-size: 16px; }
   #leftSidebar .palette-item { padding: 10px 12px; font-size: 13px; }
@@ -677,7 +677,7 @@ html:not(.dark) select option { background: #f5f7fb; color: #1a202c; }
     /* Left sidebar: hidden by default, slides up from bottom */
     #leftSidebar {
       position: fixed !important;
-      bottom: 26px; left: 0; right: 0;
+      bottom: 0; left: 0; right: 0;
       width: 100% !important;
       max-height: 50vh;
       overflow-y: auto;
@@ -692,7 +692,7 @@ html:not(.dark) select option { background: #f5f7fb; color: #1a202c; }
     /* Right sidebar: hidden by default, slides up from bottom */
     #rightSidebar {
       position: fixed !important;
-      bottom: 26px; left: 0; right: 0;
+      bottom: 0; left: 0; right: 0;
       width: 100% !important;
       max-height: 55vh;
       overflow-y: auto;
@@ -708,7 +708,7 @@ html:not(.dark) select option { background: #f5f7fb; color: #1a202c; }
     #mobileFabs {
       display: flex !important;
       position: fixed;
-      bottom: 34px;
+      bottom: 8px;
       right: 12px;
       flex-direction: column;
       gap: 8px;
@@ -729,8 +729,8 @@ html:not(.dark) select option { background: #f5f7fb; color: #1a202c; }
       color: #4fffb0 !important;
     }
 
-    /* Status bar: more compact */
-    #statusBar { font-size: 9px; height: 26px; }
+    /* Status bar: hidden on mobile */
+    #statusBar { display: none !important; }
 
     /* Sheet tabs strip: full width */
     #sheetsStrip { left: 0 !important; right: 0 !important; }
@@ -739,7 +739,7 @@ html:not(.dark) select option { background: #f5f7fb; color: #1a202c; }
     #canvasWrap { width: 100% !important; }
 
     /* Minimap smaller on mobile */
-    #minimap { width: 90px !important; height: 58px !important; bottom: 32px !important; right: 60px !important; }
+    #minimap { width: 90px !important; height: 58px !important; bottom: 8px !important; right: 60px !important; }
 
     /* Header smaller */
     header { padding: 6px 10px; }
@@ -1365,7 +1365,7 @@ html:not(.dark) #aiFlowWidget .ai-arrow    { color: rgba(5,150,105,0.7); }
   #aiFlowWidget {
     right: auto;
     left: 12px;
-    bottom: 62px;
+    bottom: 8px;
     z-index: 100;
     gap: 9px;
     padding: 10px 14px 10px 10px;
