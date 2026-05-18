@@ -7,262 +7,8 @@
 <title>ГОСТФлоу – Конструктор блок-схем</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="tailwind.output.css">
 <link rel="icon" type="image/svg+xml" href="/images/favicon.svg">
-<script>
-  tailwind.config = {
-    darkMode: 'class',
-    theme: {
-      extend: {
-        fontFamily: {
-          syne: ['Syne', 'sans-serif'],
-          mono: ['JetBrains Mono', 'monospace'],
-        },
-        colors: {
-          accent: '#4fffb0',
-          accent2: '#ff6b6b',
-          accent3: '#6b8aff',
-          dark: {
-            bg:      '#0d0f14',
-            surface: '#0e1220',
-            panel:   '#131828',
-            border:  '#1e2540',
-          },
-          light: {
-            bg:      '#f0f2f7',
-            surface: '#ffffff',
-            panel:   '#f5f7fb',
-            border:  '#dde1ec',
-          }
-        }
-      }
-    }
-  }
-</script>
-<style>
-  body { font-family: 'Syne', sans-serif; }
-  .canvas-dots-dark {
-    background-color: #080a0f;
-    background-image: radial-gradient(circle, #1c2030 1px, transparent 1px);
-    background-size: 24px 24px;
-  }
-  .canvas-dots-light {
-    background-color: #f0f2f7;
-    background-image: radial-gradient(circle, #c5cad8 1px, transparent 1px);
-    background-size: 24px 24px;
-  }
-  .canvas-dots-gost {
-    background-color: #f5f5f0;
-    background-image: radial-gradient(circle, #c8c8c0 1px, transparent 1px);
-    background-size: 24px 24px;
-  }
-  .canvas-dots-gost-dark {
-    background-color: #252830;
-    background-image: radial-gradient(circle, #363a46 1px, transparent 1px);
-    background-size: 24px 24px;
-  }
-  .color-swatch.active { border-color: #fff !important; }
-  .dark .color-swatch.active { border-color: #fff !important; }
-  .light .color-swatch.active { border-color: #000 !important; }
-
-  /* Theme toggle pill */
-  .theme-toggle { position: relative; width: 44px; height: 24px; }
-  .theme-toggle input { opacity: 0; width: 0; height: 0; }
-  .theme-toggle-track {
-    position: absolute; inset: 0; border-radius: 9999px; cursor: pointer; transition: background 0.2s;
-  }
-  .theme-toggle-thumb {
-    position: absolute; top: 3px; left: 3px;
-    width: 18px; height: 18px; border-radius: 50%;
-    background: #fff; transition: transform 0.2s;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 10px; line-height: 1;
-  }
-  input:checked + .theme-toggle-track { background: #4fffb0; }
-  input:checked + .theme-toggle-track .theme-toggle-thumb { transform: translateX(20px); }
-  input:not(:checked) + .theme-toggle-track { background: #374151; }
-
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
-  .dark ::-webkit-scrollbar-thumb { background: #374151; }
-  .light ::-webkit-scrollbar-thumb { background: #cbd5e1; }
-
-  select option { background: #131828; color: #e8eaf0; }
-  .dark select option { background: #131828; color: #e8eaf0; }
-  html:not(.dark) select option { background: #f5f7fb; color: #1a202c; }
-  select:disabled, input:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-  }
-  /* Prevent browser text selection during drag/rubber-band */
-  #canvas, #canvasWrap {
-    user-select: none;
-    -webkit-user-select: none;
-  }
-
-/* ===== MOBILE ADAPTATIONS ===== */
-  @media (max-width: 768px) {
-    /* Header: hide desktop buttons, show compact icon toolbar */
-    #headerButtons { display: none; }
-    #mobileMenuBtn { display: none !important; }
-
-    /* Compact mobile toolbar strip — below header */
-    #mobileToolbar {
-      display: flex !important;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      padding: 6px 8px;
-    }
-    .mtb-btn {
-      width: 34px; height: 34px;
-      border-radius: 8px;
-      border: 1px solid;
-      font-size: 15px;
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer;
-      transition: all 0.15s;
-      flex-shrink: 0;
-      background: transparent;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .mtb-btn.danger {
-      font-size: 11px;
-      font-weight: 700;
-      font-family: 'JetBrains Mono', monospace;
-      color: #ff6b6b;
-      border-color: rgba(255,107,107,0.4);
-    }
-    .mtb-btn.danger:active { background: rgba(255,107,107,0.15); }
-    /* Separator line */
-    .mtb-sep {
-      width: 1px; height: 20px; flex-shrink: 0;
-      background: currentColor; opacity: 0.15;
-    }
-    /* Theme pill in toolbar */
-    #mobileThemePill {
-      display: flex; align-items: center; gap: 2px;
-    }
-
-    /* Dropdown for export/import — slides down */
-    #mobileMoreMenu {
-      position: fixed; top: 96px; right: 8px; z-index: 300;
-      display: none; flex-direction: column; gap: 4px;
-      padding: 8px;
-      border-radius: 10px;
-      border: 1px solid;
-      min-width: 160px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-    }
-    #mobileMoreMenu.open { display: flex; }
-    .mmm-btn {
-      width: 100%; text-align: left;
-      padding: 9px 12px; border-radius: 7px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px; font-weight: 500;
-      border: 1px solid transparent;
-      cursor: pointer;
-      background: transparent;
-      transition: all 0.12s;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    /* Mobile FAB toolbar — now only shapes+props, no menu fab */
-
-    /* Left sidebar: hidden by default, slides up from bottom */
-    #leftSidebar {
-      position: fixed !important;
-      bottom: 26px; left: 0; right: 0;
-      width: 100% !important;
-      max-height: 50vh;
-      overflow-y: auto;
-      z-index: 150;
-      transform: translateY(100%);
-      transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
-      border-top: 1px solid;
-      border-right: none !important;
-    }
-    #leftSidebar.mobile-open { transform: translateY(0); }
-
-    /* Right sidebar: hidden by default, slides up from bottom */
-    #rightSidebar {
-      position: fixed !important;
-      bottom: 26px; left: 0; right: 0;
-      width: 100% !important;
-      max-height: 55vh;
-      overflow-y: auto;
-      z-index: 150;
-      transform: translateY(100%);
-      transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
-      border-top: 1px solid;
-      border-left: none !important;
-    }
-    #rightSidebar.mobile-open { transform: translateY(0); }
-
-    /* Mobile FAB toolbar — sits above status bar, right side */
-    #mobileFabs {
-      display: flex !important;
-      position: fixed;
-      bottom: 34px;
-      right: 12px;
-      flex-direction: column;
-      gap: 8px;
-      z-index: 120;
-    }
-    .mobile-fab {
-      width: 44px; height: 44px;
-      border-radius: 12px;
-      border: 1px solid;
-      font-size: 18px;
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer;
-      transition: all 0.15s;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-    }
-    .mobile-fab.active {
-      border-color: #4fffb0 !important;
-      color: #4fffb0 !important;
-    }
-
-    /* Status bar: more compact */
-    #statusBar { font-size: 9px; height: 26px; }
-
-    /* Sheet tabs strip: full width */
-    #sheetsStrip { left: 0 !important; right: 0 !important; }
-
-    /* Canvas takes full space */
-    #canvasWrap { width: 100% !important; }
-
-    /* Minimap smaller on mobile */
-    #minimap { width: 90px !important; height: 58px !important; bottom: 32px !important; right: 60px !important; }
-
-    /* Header smaller */
-    header { padding: 6px 10px; }
-    header .text-lg { font-size: 16px; }
-
-    /* Palette items: larger touch targets */
-    #leftSidebar .palette-item { padding: 10px 12px; font-size: 13px; }
-
-    /* Overlay backdrop for sidebars */
-    #mobileBackdrop {
-      display: none;
-      position: fixed; inset: 0; z-index: 140;
-      background: rgba(0,0,0,0.5);
-    }
-    #mobileBackdrop.active { display: block; }
-  }
-
-  @media (min-width: 769px) {
-    #mobileMenuBtn { display: none !important; }
-    #mobileFabs { display: none !important; }
-    #mobileMenu { display: none !important; }
-    #mobileMoreMenu { display: none !important; }
-    #mobileToolbar { display: none !important; }
-    #mobileBackdrop { display: none !important; }
-  }
-</style>
 </head>
 <body class="dark:bg-dark-bg bg-light-bg dark:text-gray-100 text-gray-800 h-screen overflow-hidden flex flex-col">
 
@@ -467,6 +213,20 @@
         <span id="paletteCustomLabel">✏ Нарисовать</span>
       </button>
       <div class="mt-1.5 font-mono text-[9px] dark:text-gray-500 text-gray-400 leading-[1.7]">Клик → точки<br>2×клик → готово<br>Esc → отмена</div>
+    </div>
+
+    <!-- Draw path -->
+    <div class="px-3 pt-3 pb-3 dark:border-dark-border border-light-border border-t">
+      <div class="text-[9px] font-semibold tracking-widest uppercase dark:text-gray-500 text-gray-400 mb-2">Произвольный путь</div>
+      <button id="paletteDrawPath"
+        class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg dark:border-dark-border border-light-border border cursor-pointer transition-all text-xs font-semibold dark:text-gray-200 text-gray-700 select-none hover:border-accent hover:text-accent dark:bg-dark-panel bg-light-panel text-left"
+        title="Кликните, затем ставьте точки на холсте. Двойной клик или Enter – завершить.">
+        <div class="w-7 h-5 flex items-center justify-center flex-shrink-0">
+          <svg width="26" height="18" viewBox="0 0 26 18"><polyline points="2,14 8,4 14,10 22,3" fill="none" stroke="#4fffb0" stroke-width="1.8" stroke-dasharray="none"/><circle cx="2" cy="14" r="2.2" fill="#4fffb0"/><circle cx="8" cy="4" r="2.2" fill="#4fffb0"/><circle cx="14" cy="10" r="2.2" fill="#4fffb0"/><circle cx="22" cy="3" r="2.2" fill="#4fffb0"/><polygon points="22,0 26,3 22,6" fill="#4fffb0"/></svg>
+        </div>
+        <span id="paletteDrawPathLabel">✏ Нарисовать путь</span>
+      </button>
+      <div class="mt-1.5 font-mono text-[9px] dark:text-gray-500 text-gray-400 leading-[1.7]">Клик → точки пути<br>2×клик → готово<br>Esc → отмена</div>
     </div>
 
     <!-- Tips -->
@@ -1108,6 +868,19 @@ let polygonDrawMode = false;
 let polygonPoints = []; // [{x,y}] absolute SVG canvas coords
 let polygonCursorPt = null;
 let polygonEditNodeId = null; // id of node being re-edited
+
+// Path (edge) drawing state — user clicks waypoints, dblclick or Enter to finish
+let pathDrawMode = false;
+let pathDrawPoints = []; // [{x,y}] waypoints placed by user
+let pathDrawCursorPt = null; // current cursor position for live preview
+let pathDrawSnapTarget = null; // { nodeId, portId, px, py } — snap to port while drawing
+let pathDrawFromPort = null; // { nodeId, portId } — port where path started (if started from port)
+let pathDrawToPort = null;   // { nodeId, portId } — port where path ended (if ended at port)
+
+// Path waypoint dragging state (for editing existing path nodes)
+let draggingPathWaypoint = null; // { edgeId, ptIndex } when dragging a waypoint of a selected path
+let hoveredPathWaypointIdx = -1; // index of hovered waypoint (-1 = none)
+let pathDrawAxisSnap = []; // [{axis,value,refPt,color}] active snap guides
 
 // ============================================================
 // TAB SWITCHING
@@ -1876,6 +1649,14 @@ function fallbackRoute(sx, sy, fd, ex, ey, td) {
 }
 
 function getEdgePath(edge) {
+  // Free-drawn path: user placed explicit waypoints, just connect them
+  if (edge.customWaypoints && edge.customWaypoints.length >= 2) {
+    const pts = edge.customWaypoints;
+    let d = `M${pts[0][0]},${pts[0][1]}`;
+    for (let i = 1; i < pts.length; i++) d += ` L${pts[i][0]},${pts[i][1]}`;
+    return d;
+  }
+
   const src = nodes.find(n => n.id === edge.from);
   const dst = nodes.find(n => n.id === edge.to);
   if (!src || !dst) return '';
@@ -2032,7 +1813,8 @@ function render() {
 
     // Draw draggable segment handles in orthogonal mode – always render hit areas, show dots only when selected
     // Appended AFTER el so they sit on top and receive pointer events correctly
-    if (edgeStyle === 'orthogonal') {
+    // Skip for free-drawn paths (customWaypoints) – those use point handles instead
+    if (edgeStyle === 'orthogonal' && !edge.customWaypoints) {
       const srcN = nodes.find(n => n.id === edge.from);
       const dstN = nodes.find(n => n.id === edge.to);
       if (srcN && dstN) {
@@ -2076,6 +1858,91 @@ function render() {
       }
     }
   });
+
+  // Draw draggable waypoint handles for selected path edges (customWaypoints)
+  {
+    const selEdge = edges.find(e => e.id === selectedId && e.customWaypoints && e.customWaypoints.length >= 2);
+    if (selEdge) {
+      selEdge.customWaypoints.forEach(([wx, wy], i) => {
+        const isFirst = i === 0;
+        const isLast = i === selEdge.customWaypoints.length - 1;
+        const isHov = hoveredPathWaypointIdx === i;
+        const R = (isHov ? 8 : 6) / zoom;
+
+        // Outer ring
+        const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        ring.setAttribute('cx', wx); ring.setAttribute('cy', wy);
+        ring.setAttribute('r', R + 3);
+        ring.setAttribute('fill', 'none');
+        ring.setAttribute('stroke', isFirst ? '#4fffb0' : (isLast ? '#f87171' : (isHov ? '#fbbf24' : '#4fffb0')));
+        ring.setAttribute('stroke-width', 1.5 / zoom);
+        ring.setAttribute('opacity', isHov ? '0.7' : '0.35');
+        ring.setAttribute('pointer-events', 'none');
+        g.appendChild(ring);
+
+        // Hit area (transparent, big)
+        const hit = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        hit.setAttribute('cx', wx); hit.setAttribute('cy', wy);
+        hit.setAttribute('r', 12 / zoom);
+        hit.setAttribute('fill', 'transparent');
+        hit.setAttribute('stroke', 'none');
+        hit.style.cursor = 'move';
+        hit.dataset.kind = 'pathWaypoint';
+        hit.dataset.edgeId = selEdge.id;
+        hit.dataset.ptIndex = i;
+        g.appendChild(hit);
+
+        // Filled circle
+        const circ = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circ.setAttribute('cx', wx); circ.setAttribute('cy', wy);
+        circ.setAttribute('r', R);
+        circ.setAttribute('fill', isFirst ? '#4fffb0' : (isLast ? '#f87171' : (isHov ? '#fbbf24' : '#4fffb0')));
+        circ.setAttribute('stroke', isDark() ? '#0d0f14' : '#ffffff');
+        circ.setAttribute('stroke-width', 1.5 / zoom);
+        circ.setAttribute('opacity', '0.95');
+        circ.setAttribute('pointer-events', 'none');
+        g.appendChild(circ);
+
+        // Point index label
+        const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        lbl.setAttribute('x', wx); lbl.setAttribute('y', wy);
+        lbl.setAttribute('text-anchor', 'middle');
+        lbl.setAttribute('dominant-baseline', 'central');
+        lbl.setAttribute('font-size', Math.max(6, 7 / zoom));
+        lbl.setAttribute('font-family', 'JetBrains Mono, monospace');
+        lbl.setAttribute('font-weight', '700');
+        lbl.setAttribute('fill', isDark() ? '#0d0f14' : '#ffffff');
+        lbl.setAttribute('pointer-events', 'none');
+        lbl.textContent = i + 1;
+        g.appendChild(lbl);
+      });
+
+      // Draw axis snap guide during waypoint drag
+      if (pathDrawAxisSnap.length > 0) {
+        const curIdx = draggingPathWaypoint ? draggingPathWaypoint.ptIndex : -1;
+        const cur = curIdx >= 0 ? { x: selEdge.customWaypoints[curIdx][0], y: selEdge.customWaypoints[curIdx][1] } : null;
+        pathDrawAxisSnap.forEach(s => {
+          const sg = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          const ref = s.refPt;
+          if (s.axis === 'x') {
+            sg.setAttribute('x1', s.value); sg.setAttribute('x2', s.value);
+            sg.setAttribute('y1', Math.min(ref.y, cur ? cur.y : ref.y) - 40/zoom);
+            sg.setAttribute('y2', Math.max(ref.y, cur ? cur.y : ref.y) + 40/zoom);
+          } else {
+            sg.setAttribute('y1', s.value); sg.setAttribute('y2', s.value);
+            sg.setAttribute('x1', Math.min(ref.x, cur ? cur.x : ref.x) - 40/zoom);
+            sg.setAttribute('x2', Math.max(ref.x, cur ? cur.x : ref.x) + 40/zoom);
+          }
+          sg.setAttribute('stroke', s.color || '#fbbf24');
+          sg.setAttribute('stroke-width', 1/zoom);
+          sg.setAttribute('stroke-dasharray', `${4/zoom},${3/zoom}`);
+          sg.setAttribute('opacity', '0.85');
+          sg.setAttribute('pointer-events', 'none');
+          g.appendChild(sg);
+        });
+      }
+    }
+  }
 
   // Draw selection rubber-band rect
   if (selectionRect) {
@@ -2269,7 +2136,7 @@ function render() {
     } // end if not inline-editing text
 
     // Ports – skip for text nodes
-    const showPorts = !isTextNode && (isSelected || isConnectSrc || hoveredNodeId === node.id);
+    const showPorts = !isTextNode && (pathDrawMode || isSelected || isConnectSrc || hoveredNodeId === node.id);
     if (node.type === 'parallel') {
       // Line-port highlight: glow the whole line on hover/select instead of circles
       const y1 = node.y + node.h * 0.25;
@@ -2310,6 +2177,29 @@ function render() {
       const isHovPort = hoveredPort && hoveredPort.nodeId === node.id && hoveredPort.portId === port.id;
       const portColor = isDark() ? '#4fffb0' : '#00c070';
 
+      // In pathDrawMode: check if port is occupied (already has an edge)
+      let portFill = 'transparent';
+      let portStroke = portColor;
+      let portOpacity = showPorts ? '1' : '0';
+      if (pathDrawMode && showPorts) {
+        const isOccupied = edges.some(ed =>
+          (ed.from === node.id && ed.fromPort === port.id) ||
+          (ed.to === node.id && ed.toPort === port.id)
+        );
+        if (isOccupied) {
+          portStroke = '#ff6b6b'; // red = occupied, cannot connect
+          portFill = 'rgba(255,107,107,0.18)';
+        } else {
+          portStroke = portColor;
+          portFill = 'rgba(79,255,176,0.18)'; // slight green fill = free
+        }
+        // If this is the snap target, highlight it
+        if (pathDrawSnapTarget && pathDrawSnapTarget.nodeId === node.id && pathDrawSnapTarget.portId === port.id) {
+          portFill = portColor;
+          portStroke = portColor;
+        }
+      }
+
       // Large invisible hit area – makes ports easy to grab from nearby
       const hitCirc = document.createElementNS('http://www.w3.org/2000/svg','circle');
       hitCirc.setAttribute('cx', port.px);
@@ -2325,12 +2215,13 @@ function render() {
       grp.appendChild(hitCirc);
 
       // Visible port circle
+      const isSnap = pathDrawMode && pathDrawSnapTarget && pathDrawSnapTarget.nodeId === node.id && pathDrawSnapTarget.portId === port.id;
       const pc = document.createElementNS('http://www.w3.org/2000/svg','circle');
       pc.setAttribute('cx', port.px);
       pc.setAttribute('cy', port.py);
-      pc.setAttribute('r', isHovPort ? 7 : 5);
-      pc.setAttribute('fill', isHovPort ? portColor : 'transparent');
-      pc.setAttribute('stroke', portColor);
+      pc.setAttribute('r', (isHovPort || isSnap) ? 7 : 5);
+      pc.setAttribute('fill', pathDrawMode ? portFill : (isHovPort ? portColor : 'transparent'));
+      pc.setAttribute('stroke', pathDrawMode ? portStroke : portColor);
       pc.setAttribute('stroke-width', isDark() ? '1.5' : '2');
       pc.setAttribute('opacity', showPorts ? '1' : '0');
       pc.setAttribute('pointer-events', 'none');
@@ -2465,8 +2356,10 @@ function render() {
   }
 
   // Third pass: draw segment handles on top of nodes so they remain interactive
+  // Skip for free-drawn paths (customWaypoints) – those use point handles instead
   if (edgeStyle === 'orthogonal') {
     edges.forEach(edge => {
+      if (edge.customWaypoints) return; // free-drawn paths don't use segment handles
       const isSelected = selectedId === edge.id;
       const srcN = nodes.find(n => n.id === edge.from);
       const dstN = nodes.find(n => n.id === edge.to);
@@ -2640,6 +2533,76 @@ function render() {
     }
   }
 
+  // Path draw preview (free-drawn edge by waypoints)
+  if (pathDrawMode && pathDrawPoints.length > 0) {
+    const allPts = pathDrawCursorPt ? [...pathDrawPoints, pathDrawCursorPt] : pathDrawPoints;
+    // Draw the path so far
+    if (allPts.length >= 2) {
+      const pathEl = document.createElementNS('http://www.w3.org/2000/svg','polyline');
+      pathEl.setAttribute('points', allPts.map(p=>`${p.x},${p.y}`).join(' '));
+      pathEl.setAttribute('fill', 'none');
+      pathEl.setAttribute('stroke', '#4fffb0');
+      pathEl.setAttribute('stroke-width', '1.8');
+      pathEl.setAttribute('stroke-dasharray', '6,3');
+      pathEl.setAttribute('marker-end', 'url(#arrowhead-active)');
+      pathEl.setAttribute('pointer-events','none');
+      g.appendChild(pathEl);
+    } else if (allPts.length === 2) {
+      const lineEl = document.createElementNS('http://www.w3.org/2000/svg','line');
+      lineEl.setAttribute('x1', allPts[0].x); lineEl.setAttribute('y1', allPts[0].y);
+      lineEl.setAttribute('x2', allPts[1].x); lineEl.setAttribute('y2', allPts[1].y);
+      lineEl.setAttribute('stroke','#4fffb0'); lineEl.setAttribute('stroke-width','1.8');
+      lineEl.setAttribute('stroke-dasharray','6,3');
+      lineEl.setAttribute('marker-end', 'url(#arrowhead-active)');
+      lineEl.setAttribute('pointer-events','none');
+      g.appendChild(lineEl);
+    }
+    // Draw waypoint dots
+    pathDrawPoints.forEach((pt, i) => {
+      const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      c.setAttribute('cx', pt.x); c.setAttribute('cy', pt.y); c.setAttribute('r', i===0?7:5);
+      c.setAttribute('fill', '#4fffb0');
+      c.setAttribute('stroke', isDark()?'#0d0f14':'#fff'); c.setAttribute('stroke-width','1.5');
+      c.setAttribute('pointer-events','none');
+      g.appendChild(c);
+    });
+    // Count label near cursor
+    if (pathDrawCursorPt) {
+      const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+      lbl.setAttribute('x', pathDrawCursorPt.x + 10/zoom);
+      lbl.setAttribute('y', pathDrawCursorPt.y - 8/zoom);
+      lbl.setAttribute('font-size', 10/zoom);
+      lbl.setAttribute('font-family','JetBrains Mono, monospace');
+      lbl.setAttribute('fill','#4fffb0');
+      lbl.setAttribute('pointer-events','none');
+      lbl.textContent = `${pathDrawPoints.length + 1} точ. • 2×клик – готово`;
+      g.appendChild(lbl);
+    }
+
+    // Draw axis snap guide lines
+    if (pathDrawAxisSnap.length > 0 && pathDrawCursorPt) {
+      pathDrawAxisSnap.forEach(s => {
+        const sg = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        const ref = s.refPt;
+        if (s.axis === 'x') {
+          sg.setAttribute('x1', s.value); sg.setAttribute('x2', s.value);
+          sg.setAttribute('y1', Math.min(ref.y, pathDrawCursorPt.y) - 40/zoom);
+          sg.setAttribute('y2', Math.max(ref.y, pathDrawCursorPt.y) + 40/zoom);
+        } else {
+          sg.setAttribute('y1', s.value); sg.setAttribute('y2', s.value);
+          sg.setAttribute('x1', Math.min(ref.x, pathDrawCursorPt.x) - 40/zoom);
+          sg.setAttribute('x2', Math.max(ref.x, pathDrawCursorPt.x) + 40/zoom);
+        }
+        sg.setAttribute('stroke', s.color || '#fbbf24');
+        sg.setAttribute('stroke-width', 1/zoom);
+        sg.setAttribute('stroke-dasharray', `${4/zoom},${3/zoom}`);
+        sg.setAttribute('opacity', '0.85');
+        sg.setAttribute('pointer-events', 'none');
+        g.appendChild(sg);
+      });
+    }
+  }
+
   // Alignment snap guides (shown during node drag)
   if (alignSnapGuides.length > 0) {
     alignSnapGuides.forEach(gl => {
@@ -2781,14 +2744,138 @@ function finalizePolygon() {
   updateProps();
 }
 
-// Double-click to finish polygon
-svg.addEventListener('dblclick', e => {
-  if (!polygonDrawMode) return;
-  e.preventDefault(); e.stopPropagation();
-  // Remove the last point (it was added on the first click of the double-click)
-  if (polygonPoints.length > 0) polygonPoints.pop();
-  finalizePolygon();
+// ============================================================
+// PATH DRAW MODE (free-drawn edges by clicking waypoints)
+// ============================================================
+function startPathDraw(fromPort) {
+  pathDrawMode = true;
+  pathDrawPoints = [];
+  pathDrawCursorPt = null;
+  pathDrawSnapTarget = null;
+  pathDrawFromPort = fromPort || null;
+  pathDrawToPort = null;
+  if (fromPort) {
+    pathDrawPoints.push({ x: fromPort.px, y: fromPort.py });
+  }
+  canvasWrap.style.cursor = 'crosshair';
+  document.getElementById('paletteDrawPathLabel').textContent = '⏹ Рисование пути...';
+  document.getElementById('statMode').innerHTML = 'Режим: <span style="color:#4fffb0;font-weight:700">рисование пути – 2×клик или Enter для завершения</span>';
+  render();
+}
+
+function cancelPathDraw() {
+  pathDrawMode = false;
+  pathDrawPoints = [];
+  pathDrawCursorPt = null;
+  pathDrawSnapTarget = null;
+  pathDrawFromPort = null;
+  pathDrawToPort = null;
+  canvasWrap.style.cursor = '';
+  document.getElementById('paletteDrawPathLabel').textContent = '✏ Нарисовать путь';
+  document.getElementById('statMode').innerHTML = 'Режим: <span class="text-accent">просмотр</span>';
+  render();
+}
+
+function finalizePathDraw(toPort) {
+  if (pathDrawPoints.length < 2) { cancelPathDraw(); return; }
+  const endPort = toPort || pathDrawToPort;
+  if (endPort) {
+    pathDrawPoints[pathDrawPoints.length - 1] = { x: endPort.px, y: endPort.py };
+  }
+  saveHistory();
+  const fromPort = pathDrawFromPort;
+  const edge = {
+    id: `e${edgeIdCounter++}`,
+    from: fromPort ? fromPort.nodeId : null,
+    to: endPort ? endPort.nodeId : null,
+    fromPort: fromPort ? fromPort.portId : null,
+    toPort: endPort ? endPort.portId : null,
+    label: '',
+    customWaypoints: pathDrawPoints.map(p => [p.x, p.y]),
+  };
+  edges.push(edge);
+  selectedId = edge.id;
+  updateStatus();
+  cancelPathDraw();
+  updateProps();
+}
+
+// Helper: compute axis snap guides for path drawing / waypoint drag
+// refPoints: array of {x,y} to snap to (last drawn point, neighbours)
+// Also snaps to port X/Y of all nodes on canvas
+function computePathAxisSnap(pt, refPoints) {
+  const AXIS_SNAP_SVG = 12 / zoom;
+  const guides = [];
+  let snapX = null, snapY = null;
+
+  // Collect candidate snap values: from refPoints + all ports
+  const xCandidates = []; // [{value, refPt, color}]
+  const yCandidates = [];
+
+  // From reference points (last drawn pt / neighbour waypoints)
+  for (const rp of refPoints) {
+    xCandidates.push({ value: rp.x, refPt: rp, color: '#fbbf24' });
+    yCandidates.push({ value: rp.y, refPt: rp, color: '#fbbf24' });
+  }
+
+  // From all visible node ports
+  nodes.forEach(node => {
+    if (node.type === 'text' || node.type === 'parallel') return;
+    getPorts(node).forEach(port => {
+      xCandidates.push({ value: port.px, refPt: { x: port.px, y: port.py }, color: '#4fffb0' });
+      yCandidates.push({ value: port.py, refPt: { x: port.px, y: port.py }, color: '#4fffb0' });
+    });
+  });
+
+  // Find best X snap
+  let bestXDist = AXIS_SNAP_SVG;
+  for (const c of xCandidates) {
+    const d = Math.abs(pt.x - c.value);
+    if (d < bestXDist) { bestXDist = d; snapX = c; }
+  }
+  // Find best Y snap
+  let bestYDist = AXIS_SNAP_SVG;
+  for (const c of yCandidates) {
+    const d = Math.abs(pt.y - c.value);
+    if (d < bestYDist) { bestYDist = d; snapY = c; }
+  }
+
+  if (snapX) guides.push({ axis: 'x', value: snapX.value, refPt: snapX.refPt, color: snapX.color });
+  if (snapY) guides.push({ axis: 'y', value: snapY.value, refPt: snapY.refPt, color: snapY.color });
+  return guides;
+}
+
+// Helper: snap radius for port snapping in pathDrawMode (in SVG coords)
+function findPathSnapPort(pt) {
+  const snapR = 22 / zoom;
+  let bestDist = snapR;
+  let best = null;
+  nodes.forEach(node => {
+    if (node.type === 'text' || node.type === 'parallel') return;
+    getPorts(node).forEach(port => {
+      const d = Math.hypot(port.px - pt.x, port.py - pt.y);
+      if (d < bestDist) {
+        const isOccupied = edges.some(ed =>
+          (ed.from === node.id && ed.fromPort === port.id) ||
+          (ed.to === node.id && ed.toPort === port.id)
+        );
+        if (pathDrawFromPort && pathDrawFromPort.nodeId === node.id && pathDrawFromPort.portId === port.id) return;
+        if (!isOccupied) { bestDist = d; best = { nodeId: node.id, portId: port.id, px: port.px, py: port.py }; }
+      }
+    });
+  });
+  return best;
+}
+
+// Palette button
+document.getElementById('paletteDrawPath').addEventListener('click', () => {
+  if (pathDrawMode) { cancelPathDraw(); }
+  else {
+    if (polygonDrawMode) cancelPolygonDraw();
+    startPathDraw(null);
+  }
 });
+
 
 // ============================================================
 // PROPERTIES PANEL
@@ -3156,6 +3243,18 @@ document.getElementById('paletteCustomShape').addEventListener('click', () => {
 
 // Keyboard: Escape cancels drawing, Enter finalizes
 document.addEventListener('keydown', e => {
+  if (pathDrawMode) {
+    if (e.key === 'Escape') { cancelPathDraw(); e.preventDefault(); }
+    if (e.key === 'Enter') {
+      if (pathDrawPoints.length >= 2) finalizePathDraw();
+      else cancelPathDraw();
+      e.preventDefault();
+    }
+    if (e.key === 'Backspace' && pathDrawPoints.length > 0) {
+      pathDrawPoints.pop(); render(); e.preventDefault();
+    }
+    return; // don't process other hotkeys while drawing
+  }
   if (polygonDrawMode) {
     if (e.key === 'Escape') { cancelPolygonDraw(); e.preventDefault(); }
     if (e.key === 'Enter') {
@@ -3239,6 +3338,28 @@ svg.addEventListener('mousemove', e => {
     return;
   }
 
+  // Path drawing mode: track cursor and snap to ports
+  if (pathDrawMode) {
+    const snap = findPathSnapPort(pt);
+    pathDrawSnapTarget = snap || null;
+    if (snap) {
+      pathDrawCursorPt = { x: snap.px, y: snap.py };
+      pathDrawAxisSnap = [];
+      canvasWrap.style.cursor = 'pointer';
+    } else {
+      pathDrawAxisSnap = computePathAxisSnap(pt, pathDrawPoints.length > 0 ? [pathDrawPoints[pathDrawPoints.length - 1]] : []);
+      let snapped = { x: pt.x, y: pt.y };
+      for (const s of pathDrawAxisSnap) {
+        if (s.axis === 'x') snapped.x = s.value;
+        else snapped.y = s.value;
+      }
+      pathDrawCursorPt = snapped;
+      canvasWrap.style.cursor = 'crosshair';
+    }
+    render();
+    return;
+  }
+
   // Polygon drawing mode: track cursor
   if (polygonDrawMode) {
     let snapped = { x: pt.x, y: pt.y };
@@ -3249,6 +3370,26 @@ svg.addEventListener('mousemove', e => {
     });
     polygonCursorPt = snapped;
     render();
+    return;
+  }
+
+  // Path waypoint drag
+  if (draggingPathWaypoint) {
+    const edge = edges.find(ed => ed.id === draggingPathWaypoint.edgeId);
+    if (edge && edge.customWaypoints) {
+      const i = draggingPathWaypoint.ptIndex;
+      const neighbours = [];
+      if (i > 0) neighbours.push({ x: edge.customWaypoints[i-1][0], y: edge.customWaypoints[i-1][1] });
+      if (i < edge.customWaypoints.length - 1) neighbours.push({ x: edge.customWaypoints[i+1][0], y: edge.customWaypoints[i+1][1] });
+      pathDrawAxisSnap = computePathAxisSnap(pt, neighbours);
+      let nx = pt.x, ny = pt.y;
+      for (const s of pathDrawAxisSnap) {
+        if (s.axis === 'x') nx = s.value;
+        else ny = s.value;
+      }
+      edge.customWaypoints[i] = [nx, ny];
+      render();
+    }
     return;
   }
 
@@ -3438,9 +3579,19 @@ svg.addEventListener('mousemove', e => {
     hoveredPort = { nodeId: target.dataset.nodeId, portId: target.dataset.portId };
     hoveredNodeId = target.dataset.nodeId;
     render();
+  } else if (target.dataset.kind === 'pathWaypoint') {
+    const newIdx = parseInt(target.dataset.ptIndex);
+    if (hoveredPathWaypointIdx !== newIdx) {
+      hoveredPathWaypointIdx = newIdx;
+      render();
+    }
   } else if (target.closest && target.closest('[data-kind="seghandle"]')) {
     // cursor already set on element, no re-render needed
   } else {
+    if (hoveredPathWaypointIdx !== -1) {
+      hoveredPathWaypointIdx = -1;
+      render();
+    }
     // Proximity check: show ports when cursor is within NODE_HOVER_PAD of any node bounding box
     const NODE_HOVER_PAD = 20 / zoom;
     const LINE_SNAP_PAD = 8 / zoom; // for parallel: must be near an actual line
@@ -3468,8 +3619,66 @@ svg.addEventListener('mousemove', e => {
 
 svg.addEventListener('mousedown', e => {
   if (e.button === 2) {
+    if (pathDrawMode) { cancelPathDraw(); return; }
     if (polygonDrawMode) { cancelPolygonDraw(); return; }
     isPanning = true; e.preventDefault(); return;
+  }
+
+  // Path drawing mode: add waypoint on left click (snap to port if near one)
+  if (pathDrawMode) {
+    e.preventDefault(); e.stopPropagation();
+    const pt = svgPoint(e);
+
+    // Check if clicking on a port element directly
+    const portEl = e.target.dataset && e.target.dataset.kind === 'port' ? e.target : null;
+    if (portEl) {
+      const clickedNodeId = portEl.dataset.nodeId;
+      const clickedPortId = portEl.dataset.portId;
+      const clickedNode = nodes.find(n => n.id === clickedNodeId);
+      const portObj = clickedNode ? getPorts(clickedNode).find(p => p.id === clickedPortId) : null;
+      if (portObj) {
+        // Check if port is occupied
+        const isOccupied = edges.some(ed =>
+          (ed.from === clickedNodeId && ed.fromPort === clickedPortId) ||
+          (ed.to === clickedNodeId && ed.toPort === clickedPortId)
+        );
+        // Skip the from-port itself
+        const isSelf = pathDrawFromPort && pathDrawFromPort.nodeId === clickedNodeId && pathDrawFromPort.portId === clickedPortId;
+
+        if (!isOccupied && !isSelf) {
+          if (pathDrawPoints.length === 0) {
+            // Starting from this port
+            startPathDraw({ nodeId: clickedNodeId, portId: clickedPortId, px: portObj.px, py: portObj.py });
+          } else {
+            // Ending at this port — finalize
+            pathDrawPoints.push({ x: portObj.px, y: portObj.py });
+            finalizePathDraw({ nodeId: clickedNodeId, portId: clickedPortId, px: portObj.px, py: portObj.py });
+          }
+          return;
+        } else if (isOccupied) {
+          // Occupied port — show brief visual feedback but don't add point
+          return;
+        }
+      }
+    }
+
+    // Snap to port if nearby
+    if (pathDrawSnapTarget) {
+      const snap = pathDrawSnapTarget;
+      if (pathDrawPoints.length === 0) {
+        startPathDraw({ nodeId: snap.nodeId, portId: snap.portId, px: snap.px, py: snap.py });
+      } else {
+        pathDrawPoints.push({ x: snap.px, y: snap.py });
+        finalizePathDraw({ nodeId: snap.nodeId, portId: snap.portId, px: snap.px, py: snap.py });
+      }
+      return;
+    }
+
+    // No snap — add free waypoint using snapped cursor position (axis snap applied)
+    const placed = pathDrawCursorPt || pt;
+    pathDrawPoints.push({ x: placed.x, y: placed.y });
+    render();
+    return;
   }
 
   // Polygon drawing mode: add point on left click
@@ -3495,6 +3704,20 @@ svg.addEventListener('mousedown', e => {
   }
 
   const target = e.target;
+
+  // Path waypoint drag start
+  const pathWptEl = (target.dataset && target.dataset.kind === 'pathWaypoint') ? target : (target.closest ? target.closest('[data-kind="pathWaypoint"]') : null);
+  if (pathWptEl) {
+    const edgeId = pathWptEl.dataset.edgeId;
+    const ptIndex = parseInt(pathWptEl.dataset.ptIndex);
+    saveHistory();
+    draggingPathWaypoint = { edgeId, ptIndex };
+    selectedId = edgeId;
+    selectedIds.clear();
+    e.stopPropagation();
+    render(); updateProps();
+    return;
+  }
 
   // Parallel resize handle drag
   const parallelResizeEl = target.closest('[data-kind="parallelResize"]');
@@ -3612,6 +3835,14 @@ svg.addEventListener('mousedown', e => {
 });
 
 svg.addEventListener('mouseup', e => {
+  // End path waypoint drag
+  if (draggingPathWaypoint) {
+    draggingPathWaypoint = null;
+    pathDrawAxisSnap = [];
+    render(); updateProps();
+    return;
+  }
+
   // End parallel resize
   if (draggingParallelResize) {
     draggingParallelResize = null;
@@ -3981,6 +4212,20 @@ function cancelInlineEditor() {
 }
 
 svg.addEventListener('dblclick', e => {
+  // Path draw mode: finish on double-click
+  if (pathDrawMode) {
+    e.preventDefault(); e.stopPropagation();
+    if (pathDrawPoints.length > 0) pathDrawPoints.pop();
+    finalizePathDraw();
+    return;
+  }
+  // Polygon draw mode: finish on double-click
+  if (polygonDrawMode) {
+    e.preventDefault(); e.stopPropagation();
+    if (polygonPoints.length > 0) polygonPoints.pop();
+    finalizePolygon();
+    return;
+  }
   // Double-click on empty canvas → create a text node (no inline editing)
   const nodeGrp = e.target.closest('[data-kind="node"]');
   if (nodeGrp) {
@@ -5016,6 +5261,92 @@ document.getElementById('btnAddCustomPoint').addEventListener('click', () => {
 });
 
 document.getElementById('btnAddSheet').addEventListener('click', addSheet);
+
+// ============================================================
+// AI FLOWCHART WIDGET
+// ============================================================
+(function() {
+  const dark = () => document.documentElement.classList.contains('dark');
+
+  const widget = document.createElement('a');
+  widget.href = '/ai-flowchart';
+  widget.id = 'aiFlowWidget';
+  widget.title = 'ИИ создание блок-схем — бесплатно';
+  widget.style.cssText = `
+    position: fixed;
+    bottom: 48px;
+    left: 16px;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px 8px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(79,255,176,0.5);
+    background: linear-gradient(135deg, rgba(13,15,20,0.95) 0%, rgba(19,24,40,0.95) 100%);
+    box-shadow: 0 4px 20px rgba(79,255,176,0.15), 0 2px 8px rgba(0,0,0,0.4);
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    font-family: 'JetBrains Mono', monospace;
+    max-width: 220px;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  `;
+
+  const iconWrap = document.createElement('div');
+  iconWrap.style.cssText = `
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(79,255,176,0.2) 0%, rgba(107,138,255,0.2) 100%);
+    border: 1px solid rgba(79,255,176,0.3);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 16px;
+    line-height: 1;
+  `;
+  iconWrap.textContent = '✦';
+  iconWrap.style.color = '#4fffb0';
+
+  const textWrap = document.createElement('div');
+  textWrap.style.cssText = 'display:flex;flex-direction:column;gap:1px;min-width:0;';
+
+  const title = document.createElement('span');
+  title.style.cssText = 'font-size:10px;font-weight:700;color:#4fffb0;white-space:nowrap;letter-spacing:0.02em;';
+  title.textContent = 'ИИ создание блок-схем';
+
+  const subtitle = document.createElement('span');
+  subtitle.style.cssText = 'font-size:9px;color:rgba(255,255,255,0.45);white-space:nowrap;';
+  subtitle.textContent = '● бесплатно';
+
+  textWrap.appendChild(title);
+  textWrap.appendChild(subtitle);
+
+  const arrow = document.createElement('span');
+  arrow.style.cssText = 'font-size:11px;color:rgba(79,255,176,0.6);flex-shrink:0;margin-left:2px;';
+  arrow.textContent = '→';
+
+  widget.appendChild(iconWrap);
+  widget.appendChild(textWrap);
+  widget.appendChild(arrow);
+
+  widget.addEventListener('mouseenter', () => {
+    widget.style.borderColor = 'rgba(79,255,176,0.85)';
+    widget.style.boxShadow = '0 6px 28px rgba(79,255,176,0.25), 0 2px 8px rgba(0,0,0,0.4)';
+    widget.style.transform = 'translateY(-1px)';
+    arrow.style.color = '#4fffb0';
+  });
+  widget.addEventListener('mouseleave', () => {
+    widget.style.borderColor = 'rgba(79,255,176,0.5)';
+    widget.style.boxShadow = '0 4px 20px rgba(79,255,176,0.15), 0 2px 8px rgba(0,0,0,0.4)';
+    widget.style.transform = '';
+    arrow.style.color = 'rgba(79,255,176,0.6)';
+  });
+
+  document.body.appendChild(widget);
+})();
 
 // Update sheet tabs when theme changes
 const _origApplyTheme = applyTheme;
