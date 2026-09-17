@@ -4865,9 +4865,11 @@ function exportRaster(format) {
   const canvasEl = document.createElement('canvas');
   canvasEl.width = w*scale; canvasEl.height = h*scale;
   const ctx = canvasEl.getContext('2d');
-  const bg = isDark() ? '#0d0f14' : '#f0f2f7';
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, canvasEl.width, canvasEl.height);
+  if (format === 'jpeg') {
+    // JPEG has no alpha channel, so a background must be filled to avoid black
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvasEl.width, canvasEl.height);
+  }
   const svgData = new XMLSerializer().serializeToString(svgClone);
   const svgBlob = new Blob([svgData], {type:'image/svg+xml;charset=utf-8'});
   const url = URL.createObjectURL(svgBlob);
