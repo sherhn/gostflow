@@ -85,6 +85,8 @@
     <button class="btn font-mono text-xs px-3.5 py-1.5 rounded-md dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-700 cursor-pointer transition-all hover:border-accent hover:text-accent" id="btnZoomOut">－</button>
     <button class="btn font-mono text-xs px-3.5 py-1.5 rounded-md dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-700 cursor-pointer transition-all hover:border-accent hover:text-accent" id="btnFit">⊡ Вписать</button>
     <button class="btn font-mono text-xs px-3.5 py-1.5 rounded-md dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-700 cursor-pointer transition-all hover:border-accent hover:text-accent" id="btnExportSVG">↓ SVG</button>
+    <button class="btn font-mono text-xs px-3.5 py-1.5 rounded-md dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-700 cursor-pointer transition-all hover:border-accent hover:text-accent" id="btnExportPNG">↓ PNG</button>
+    <button class="btn font-mono text-xs px-3.5 py-1.5 rounded-md dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-700 cursor-pointer transition-all hover:border-accent hover:text-accent" id="btnExportJPEG">↓ JPEG</button>
     <button class="btn font-mono text-xs px-3.5 py-1.5 rounded-md dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-700 cursor-pointer transition-all hover:border-accent hover:text-accent" id="btnExportJSON">↓ JSON</button>
     <button class="btn font-mono text-xs px-3.5 py-1.5 rounded-md dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border border dark:text-gray-200 text-gray-700 cursor-pointer transition-all hover:border-accent hover:text-accent" id="btnImportJSON">↑ Импорт</button>
     <button class="btn font-mono text-xs px-3.5 py-1.5 rounded-md bg-accent text-black border border-accent font-semibold cursor-pointer transition-all hover:bg-emerald-400" id="btnClear">Очистить</button>
@@ -600,6 +602,10 @@
 <div id="mobileMoreMenu" class="dark:bg-dark-panel bg-light-panel dark:border-dark-border border-light-border dark:text-gray-200 text-gray-700">
   <button class="mmm-btn dark:hover:bg-dark-surface hover:bg-light-bg dark:text-gray-200 text-gray-700"
     onclick="document.getElementById('btnExportSVG').click();closeMoreMenu()">↓ Экспорт SVG</button>
+  <button class="mmm-btn dark:hover:bg-dark-surface hover:bg-light-bg dark:text-gray-200 text-gray-700"
+    onclick="document.getElementById('btnExportPNG').click();closeMoreMenu()">↓ Экспорт PNG</button>
+  <button class="mmm-btn dark:hover:bg-dark-surface hover:bg-light-bg dark:text-gray-200 text-gray-700"
+    onclick="document.getElementById('btnExportJPEG').click();closeMoreMenu()">↓ Экспорт JPEG</button>
   <button class="mmm-btn dark:hover:bg-dark-surface hover:bg-light-bg dark:text-gray-200 text-gray-700"
     onclick="document.getElementById('btnExportJSON').click();closeMoreMenu()">↓ Экспорт JSON</button>
   <button class="mmm-btn dark:hover:bg-dark-surface hover:bg-light-bg dark:text-gray-200 text-gray-700"
@@ -4830,21 +4836,56 @@ document.getElementById('btnClear').addEventListener('click', () => {
     render(); updateProps(); updateStatus();
   }
 });
-document.getElementById('btnExportSVG').addEventListener('click', () => {
+function buildExportSvg() {
+  if (!nodes.length) return null;
   const svgClone = svg.cloneNode(true);
-  if (!nodes.length) return;
   const xs = nodes.map(n => [n.x, n.x+n.w]).flat();
   const ys = nodes.map(n => [n.y, n.y+n.h]).flat();
   const minX = Math.min(...xs)-30, maxX = Math.max(...xs)+30;
   const minY = Math.min(...ys)-30, maxY = Math.max(...ys)+30;
-  svgClone.setAttribute('viewBox', `${minX} ${minY} ${maxX-minX} ${maxY-minY}`);
-  svgClone.setAttribute('width', maxX-minX);
-  svgClone.setAttribute('height', maxY-minY);
+  const w = maxX-minX, h = maxY-minY;
+  svgClone.setAttribute('viewBox', `${minX} ${minY} ${w} ${h}`);
+  svgClone.setAttribute('width', w);
+  svgClone.setAttribute('height', h);
   svgClone.querySelector('g').removeAttribute('transform');
-  const blob = new Blob([svgClone.outerHTML], {type:'image/svg+xml'});
+  return {svgClone, w, h};
+}
+document.getElementById('btnExportSVG').addEventListener('click', () => {
+  const built = buildExportSvg();
+  if (!built) return;
+  const blob = new Blob([built.svgClone.outerHTML], {type:'image/svg+xml'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = 'flowchart.svg'; a.click();
 });
+function exportRaster(format) {
+  const built = buildExportSvg();
+  if (!built) return;
+  const {svgClone, w, h} = built;
+  const scale = 2;
+  const canvasEl = document.createElement('canvas');
+  canvasEl.width = w*scale; canvasEl.height = h*scale;
+  const ctx = canvasEl.getContext('2d');
+  const bg = isDark() ? '#0d0f14' : '#f0f2f7';
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, canvasEl.width, canvasEl.height);
+  const svgData = new XMLSerializer().serializeToString(svgClone);
+  const svgBlob = new Blob([svgData], {type:'image/svg+xml;charset=utf-8'});
+  const url = URL.createObjectURL(svgBlob);
+  const img = new Image();
+  img.onload = () => {
+    ctx.drawImage(img, 0, 0, canvasEl.width, canvasEl.height);
+    URL.revokeObjectURL(url);
+    const mime = format === 'jpeg' ? 'image/jpeg' : 'image/png';
+    const ext = format === 'jpeg' ? 'jpg' : 'png';
+    canvasEl.toBlob(blob => {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = `flowchart.${ext}`; a.click();
+    }, mime, 0.95);
+  };
+  img.src = url;
+}
+document.getElementById('btnExportPNG').addEventListener('click', () => exportRaster('png'));
+document.getElementById('btnExportJPEG').addEventListener('click', () => exportRaster('jpeg'));
 document.getElementById('btnExportJSON').addEventListener('click', () => {
   const data = JSON.stringify({nodes, edges}, null, 2);
   const blob = new Blob([data], {type:'application/json'});
